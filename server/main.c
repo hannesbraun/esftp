@@ -1,40 +1,65 @@
+/**
+ * @file main.c
+ * @brief File contains the main function for the server as well as the parsing of the command line arguments.
+ * @author Hannes Braun
+ * @date 12.05.2019
+ */
+
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#inlcude <unistd.h>
+#include <unistd.h>
 
-#define FALSE 0
-#define TRUE 1
+#include "server.h"
 
-typedef struct ServerArguments_t {
-    unsigned char ucArgumentsValid;
-    short int siPort;
-    char* pcFilePath;
-} ServerArguments;
-
-typedef struct ServerControl_t {
-    unsigned char ucServerStop;
-} ServerControl;
-
+/**
+ * @fn int main(int argc, char* argv[])
+ * @brief This is the main function for the server.
+ * @param argc amount of command line arguments
+ * @param argv values of command line arguments
+ * @return int exit value of the process
+ * @author Hannes Braun
+ * @date 12.05.2019
+ */
 int main(int argc, char* argv[])
 {
     ServerArguments sArguments;
+    pthread_t tidLobbyThread;
+    
+    char acReadBuffer[100];
+    char* acExitValue = "shutdown\n";
+    
+    // General purpose return value
+    int iReturnValue;
     
     parseArguments(argc, argv, &sArguments);
     
     // Only start server if arguments are valid
-    if (ucArgumentsValid == TRUE)
+    if (sArguments.ucArgumentsValid == TRUE)
     {
         printf("Starting esftp server...\n");
+        
+        // Starting the lobby thread
+        iReturnValue = pthread_create(&tidLobbyThread, NULL, lobby, &sArguments);
+        if (iReturnValue != 0)
+        {
+            fprintf(stderr, "An error ocurred while starting the lobby. pthread_create returned %d", iReturnValue);
+        }
+        
+        do {
+            printf(">");
+            fgets(acReadBuffer, 100, stdin);
+        } while (strcmp(acReadBuffer, acExitValue) != 0);
     }
     
     return EXIT_SUCCESS;
 }
 
 /**
- * @fn void parseArguments(int argc, const char* argv[], ServerArguments* sArguments)
+ * @fn void parseArguments(int argc, char* argv[], ServerArguments* sArguments)
  * @brief Parses the given command line arguments and stores the parseed values in the given struct.
- * @param argc number of command line arguments
+ * @param argc amount of command line arguments
  * @param argv values of command line arguments
  * @param sArguments the struct to write the parsed information to
  * @return void
@@ -43,40 +68,36 @@ int main(int argc, char* argv[])
  *
  * Required format: ./esftp-server 31416 /path/to/file
  */
-void parseArguments(int argc, const char* argv[], ServerArguments* sArguments)
+void parseArguments(int argc, char* argv[], ServerArguments* psArguments)
 {
     if (argc >= 3)
     {
-        sArguments->ucArgumentsValid = TRUE;
+        psArguments->ucArgumentsValid = TRUE;
         
         // Parse port number
-        sArguments->siPort = atoi(argv[1]);
-        if (sArguments->siPort == 0 || sArguments->siPort > 65535)
+        psArguments->siPort = atoi(argv[1]);
+        if (psArguments->siPort == 0)
         {
             // Invalid input
-            sArguments->ucArgumentsValid = FALSE;
+            psArguments->ucArgumentsValid = FALSE;
             fprintf(stderr, "The given port number is not a valid number.\n");
-        }
-        else if (sArguments->siPort > 65536)
-        {
-            // Out of range, not a valid port number
-            sArguments->ucArgumentsValid = FALSE;
-            fprintf(stderr, "The given number %d is not a valid port number.\n", sArguments->siPort);
         }
         
         // Parse file path
-        sArguments->pcFilePath = argv[2];
-        if (access(sArguments->pcFilePath, R_OK) == -1)
+        psArguments->pcFilePath = argv[2];
+        if (access(psArguments->pcFilePath, R_OK) == -1)
         {
             // File doesn't exist or is not readable
-            sArguments->ucArgumentsValid = FALSE;
-            fprintf(stderr, "Error while trying to access the file %s:", sArguments->pcFilePath);
+            psArguments->ucArgumentsValid = FALSE;
+            fprintf(stderr, "Error while trying to access the file %s:", psArguments->pcFilePath);
             perror(NULL);
         }
     }
     else
     {
         // Not enough arguments
-        sArguments->ucArgumentsValid = FALSE;
+        psArguments->ucArgumentsValid = FALSE;
+        fprintf(stderr, "Not enough arguments given.\n");
+        fprintf(stderr, "Usage: %s <port number> <file path>\n", argv[0]);
     }
 }
