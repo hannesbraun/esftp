@@ -1,6 +1,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -23,6 +24,27 @@ void* worker(void* pvArguments)
         perror("An error ocurred while opening the file");
     }
     
+    // Send length of file name string
+    iReturnValue = send(psWorkerArguments->iWorkerSocketID, (short int) (strlen(psWorkerArguments->pcFileName) + 1), 0);
+    if (iReturnValue == -1)
+    {
+        perror("An error ocurred while sending the length of the file name string");
+    }
+    
+    // Send file name
+    iReturnValue = send(psWorkerArguments->iWorkerSocketID, psWorkerArguments->pcFileName, strlen(psWorkerArguments->pcFileName) + 1, 0);
+    if (iReturnValue == -1)
+    {
+        perror("An error ocurred while sending the file name");
+    }
+    
+    // Send file size
+    iReturnValue = send(psWorkerArguments->iWorkerSocketID, (short int) (strlen(psWorkerArguments->pcFileName) + 1), 0);
+    if (iReturnValue == -1)
+    {
+        perror("An error ocurred while sending the fize size");
+    }
+    
     do {
         // Reading
         iReadBytes = read(iFileDescriptor, acBuffer, BUFFERSIZE);
@@ -35,6 +57,10 @@ void* worker(void* pvArguments)
         {
             // Sending File
             iReturnValue = send(psWorkerArguments->iWorkerSocketID, acBuffer, iReadBytes, 0);
+            if (iReturnValue == -1)
+            {
+                perror("An error ocurred while sending the file");
+            }
         }
     } while (iReadBytes > 0);
     
