@@ -103,6 +103,13 @@ void* lobby(void* pvArguments)
         }
     }
     
+    // Closing the lobby socket
+    iReturnValue = close(iLobbySocketID);
+    if (iReturnValue == -1)
+    {
+        perror("An error ocurred while closing the lobby socket");
+    }
+    
     free(pcFileNameAddress);
     
     return NULL;

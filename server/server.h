@@ -7,9 +7,9 @@
 #define TRUE 1
 
 typedef struct ServerArguments_t {
-    unsigned char ucArgumentsValid;
-    short int siPort;
     char* pcFilePath;
+    short int siPort;
+    unsigned char ucArgumentsValid;
 } ServerArguments;
 
 typedef struct WorkerArguments_t {

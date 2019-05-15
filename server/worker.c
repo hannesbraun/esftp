@@ -33,13 +33,17 @@ void* worker(void* pvArguments)
         
         if (iReadBytes > 0)
         {
-            // Sending
+            // Sending File
             iReturnValue = send(psWorkerArguments->iWorkerSocketID, acBuffer, iReadBytes, 0);
         }
     } while (iReadBytes > 0);
     
     // Close socket
-    close(psWorkerArguments->iWorkerSocketID);
+    iReturnValue = close(psWorkerArguments->iWorkerSocketID);
+    if (iReturnValue == -1)
+    {
+        perror("An error ocurred while closing the worker socket");
+    }
     
     // Close file
     iReturnValue = close(iFileDescriptor);
