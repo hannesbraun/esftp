@@ -1,0 +1,31 @@
+#include <fcntl.h>
+#include <stdio.h>
+#include <unistd.h>
+
+unsigned int calculateFileSize(char* pcFilePath)
+{
+    int iFileDescriptor;
+    unsigned int uiFileSize;
+    
+    // General purpose return value
+    int iReturnValue;
+    
+    // Open file
+    iFileDescriptor = open(pcFilePath, O_RDONLY);
+    if (iFileDescriptor == -1)
+    {
+        perror("An error ocurred while opening the file for calculating file size");
+    }
+    
+    // Get file size
+    uiFileSize = lseek(iFileDescriptor, 0, SEEK_END);
+    if (uiFileSize == -1)
+    {
+        perror("An error ocurred while getting the file size via lseek");
+    }
+    
+    // Close file
+    iReturnValue = close(iFileDescriptor);
+    
+    return uiFileSize;
+}
