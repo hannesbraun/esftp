@@ -6,6 +6,7 @@
 #include <unistd.h>
 
 #include "server.h"
+#include "../util/fileSize.h"
 
 void* worker(void* pvArguments)
 {
@@ -14,6 +15,8 @@ void* worker(void* pvArguments)
     
     char acBuffer[BUFFERSIZE];
     int iReadBytes;
+    unsigned long int uliFileSize = calculateFileSize(psWorkerArguments->pcFilePath);
+    unsigned short int usiFileNameLength = strlen(psWorkerArguments->pcFileName) + 1;
     
     // General purpose return value
     int iReturnValue;
@@ -24,8 +27,8 @@ void* worker(void* pvArguments)
         perror("An error ocurred while opening the file");
     }
     
-    // Send length of file name string
-    iReturnValue = send(psWorkerArguments->iWorkerSocketID, (short int) (strlen(psWorkerArguments->pcFileName) + 1), 0);
+    // Send length of file name string (including terminating null character)
+    iReturnValue = send(psWorkerArguments->iWorkerSocketID, &usiFileNameLength, sizeof(usiFileNameLength), 0);
     if (iReturnValue == -1)
     {
         perror("An error ocurred while sending the length of the file name string");
@@ -39,7 +42,7 @@ void* worker(void* pvArguments)
     }
     
     // Send file size
-    iReturnValue = send(psWorkerArguments->iWorkerSocketID, (short int) (strlen(psWorkerArguments->pcFileName) + 1), 0);
+    iReturnValue = send(psWorkerArguments->iWorkerSocketID, &uliFileSize, sizeof(uliFileSize), 0);
     if (iReturnValue == -1)
     {
         perror("An error ocurred while sending the fize size");
