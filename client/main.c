@@ -12,7 +12,7 @@ int main(int argc, char* argv[])
     // Only start client if arguments are valid
     if (sArguments.ucArgumentsValid == TRUE)
     {
-        
+        connectAndReceive(&sArguments);
     }
     
     return EXIT_SUCCESS;
