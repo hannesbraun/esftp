@@ -1,5 +1,6 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
@@ -19,8 +20,8 @@ void connectAndReceive(ClientArguments* psArguments)
     struct sockaddr_in sServerAddress;
     
     // Information to receive
-    unsigned short int usiFileNameLength;
-    unsigned long int uliFileSize;
+    uint16_t ui16FileNameLength;
+    uint64_t ui64FileSize;
     
     // File name
     char* pcFileName;
@@ -50,33 +51,33 @@ void connectAndReceive(ClientArguments* psArguments)
     }
     
     // Getting file name length
-    iReturnValue = recvExact(iSocketID, &usiFileNameLength, sizeof(usiFileNameLength), 0);
+    iReturnValue = recvExact(iSocketID, &ui16FileNameLength, sizeof(ui16FileNameLength), 0);
     if (iReturnValue == -1)
     {
         perror("An error ocurred while receiving the length of the file name");
     }
     
     // Allocating memory for file name
-    pcFileName = (char*) malloc(usiFileNameLength * sizeof(char));
+    pcFileName = (char*) malloc(ui16FileNameLength * sizeof(char));
     if (pcFileName == NULL)
     {
         perror("An error ocurred while allocating memory for the file name");
     }
     
     // Getting file name length
-    iReturnValue = recvExact(iSocketID, pcFileName, usiFileNameLength * sizeof(char), 0);
+    iReturnValue = recvExact(iSocketID, pcFileName, ui16FileNameLength * sizeof(char), 0);
     if (iReturnValue == -1)
     {
         perror("An error ocurred while receiving the file name");
     }
     
     // Getting file size
-    iReturnValue = recvExact(iSocketID, &uliFileSize, sizeof(uliFileSize), 0);
+    iReturnValue = recvExact(iSocketID, &ui64FileSize, sizeof(ui64FileSize), 0);
     if (iReturnValue == -1)
     {
         perror("An error ocurred while receiving the file size");
     }
-    uliBytesLeft = uliFileSize;
+    uliBytesLeft = ui64FileSize;
     
     // Opening the file
     iFileDescriptor = open(pcFileName, O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);

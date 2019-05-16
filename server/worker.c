@@ -1,4 +1,5 @@
 #include <fcntl.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,8 +16,8 @@ void* worker(void* pvArguments)
     
     char acBuffer[BUFFERSIZE];
     int iReadBytes;
-    unsigned long int uliFileSize = calculateFileSize(psWorkerArguments->pcFilePath);
-    unsigned short int usiFileNameLength = strlen(psWorkerArguments->pcFileName) + 1;
+    uint64_t ui64FileSize = calculateFileSize(psWorkerArguments->pcFilePath);
+    uint16_t ui16FileNameLength = strlen(psWorkerArguments->pcFileName) + 1;
     
     // General purpose return value
     int iReturnValue;
@@ -28,7 +29,7 @@ void* worker(void* pvArguments)
     }
     
     // Send length of file name string (including terminating null character)
-    iReturnValue = send(psWorkerArguments->iWorkerSocketID, &usiFileNameLength, sizeof(usiFileNameLength), 0);
+    iReturnValue = send(psWorkerArguments->iWorkerSocketID, &ui16FileNameLength, sizeof(ui16FileNameLength), 0);
     if (iReturnValue == -1)
     {
         perror("An error ocurred while sending the length of the file name string");
@@ -42,7 +43,7 @@ void* worker(void* pvArguments)
     }
     
     // Send file size
-    iReturnValue = send(psWorkerArguments->iWorkerSocketID, &uliFileSize, sizeof(uliFileSize), 0);
+    iReturnValue = send(psWorkerArguments->iWorkerSocketID, &ui64FileSize, sizeof(ui64FileSize), 0);
     if (iReturnValue == -1)
     {
         perror("An error ocurred while sending the fize size");
