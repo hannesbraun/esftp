@@ -2,10 +2,10 @@
 #include <stdio.h>
 #include <unistd.h>
 
-unsigned int calculateFileSize(char* pcFilePath)
+unsigned long int calculateFileSize(char* pcFilePath)
 {
     int iFileDescriptor;
-    unsigned int uiFileSize;
+    unsigned int uliFileSize;
     
     // General purpose return value
     int iReturnValue;
@@ -18,8 +18,8 @@ unsigned int calculateFileSize(char* pcFilePath)
     }
     
     // Get file size
-    uiFileSize = lseek(iFileDescriptor, 0, SEEK_END);
-    if (uiFileSize == -1)
+    uliFileSize = lseek(iFileDescriptor, 0, SEEK_END);
+    if (uliFileSize == -1)
     {
         perror("An error ocurred while getting the file size via lseek");
     }
@@ -27,5 +27,5 @@ unsigned int calculateFileSize(char* pcFilePath)
     // Close file
     iReturnValue = close(iFileDescriptor);
     
-    return uiFileSize;
+    return uliFileSize;
 }

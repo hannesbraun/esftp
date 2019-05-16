@@ -22,7 +22,6 @@ int recvExact(int iSocketID, void* pvBuffer, int iBuflen, int iFlags)
 {
     int iCurrentReceivedBytes = 0;
     int iTotalReceivedBytes = 0;
-    int iBytesLeft = iBuflen;
     
     while (iBuflen > iTotalReceivedBytes) {
         // Receive operation

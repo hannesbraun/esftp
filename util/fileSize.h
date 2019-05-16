@@ -1,6 +1,6 @@
 #ifndef fileSize_h
 #define fileSize_h
 
-unsigned int calculateFileSize(char* pcFilePath);
+unsigned long int calculateFileSize(char* pcFilePath);
 
 #endif
