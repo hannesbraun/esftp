@@ -1,7 +1,22 @@
+/**
+ * @file fileSize.c
+ * @brief File contains the fileSize function.
+ * @author Hannes Braun
+ * @date 16.05.2019
+ */
+
 #include <fcntl.h>
 #include <stdio.h>
 #include <unistd.h>
 
+/**
+ * @fn unsigned long int calculateFileSize(char* pcFilePath)
+ * @brief This function calculates the size of the given file.
+ * @param pcFilePath the file path as a char array
+ * @return unsigned long int the file size in bytes
+ * @author Hannes Braun
+ * @date 16.05.2019
+ */
 unsigned long int calculateFileSize(char* pcFilePath)
 {
     int iFileDescriptor;
