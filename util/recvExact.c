@@ -20,6 +20,7 @@
  */
 int recvExact(int iSocketID, void* pvBuffer, int iBuflen, int iFlags)
 {
+    // Initialize amount of received bytes with zero
     int iCurrentReceivedBytes = 0;
     int iTotalReceivedBytes = 0;
     
