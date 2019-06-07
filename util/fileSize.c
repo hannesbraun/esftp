@@ -19,7 +19,10 @@
  */
 unsigned long int calculateFileSize(char* pcFilePath)
 {
+    // File descriptor of the file to get the size of
     int iFileDescriptor;
+    
+    // File size
     unsigned int uliFileSize;
     
     // General purpose return value
