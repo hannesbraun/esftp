@@ -41,6 +41,10 @@ unsigned long int calculateFileSize(char* pcFilePath)
     
     // Close file
     iReturnValue = close(iFileDescriptor);
+    if (iReturnValue == -1)
+    {
+        perror("An error ocurred while closing the file after getting its size");
+    }
     
     return uliFileSize;
 }
