@@ -1,3 +1,10 @@
+/**
+ * @file client.h
+ * @brief File contains the header for the client.
+ * @author Hannes Braun
+ * @date 18.06.2019
+ */
+
 #ifndef client_h
 #define client_h
 
@@ -8,7 +15,8 @@
 
 #define RECVBUFFERSIZE 4096
 
-typedef struct ClientArguments_t {
+typedef struct ClientArguments_t
+{
     struct in_addr sIPAddress;
     short int siPort;
     unsigned char ucArgumentsValid;

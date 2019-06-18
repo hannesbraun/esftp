@@ -24,35 +24,40 @@
  */
 int main(int argc, char* argv[])
 {
+    // Server arguments provided by argv
     ServerArguments sArguments;
+
+    // Thread id of lobby
     pthread_t tidLobbyThread;
-    
+
+    // Char arrays for working with console input
     char acReadBuffer[100];
     char* acExitValue = "shutdown\n";
-    
+
     // General purpose return value
     int iReturnValue;
-    
+
     parseArguments(argc, argv, &sArguments);
-    
+
     // Only start server if arguments are valid
     if (sArguments.ucArgumentsValid == TRUE)
     {
         printf("Starting esftp server...\n");
-        
+
         // Starting the lobby thread
         iReturnValue = pthread_create(&tidLobbyThread, NULL, lobby, &sArguments);
         if (iReturnValue != 0)
         {
             fprintf(stderr, "An error ocurred while starting the lobby. pthread_create returned %d", iReturnValue);
         }
-        
-        do {
+
+        do
+        {
             printf(">");
             fgets(acReadBuffer, 100, stdin);
         } while (strcmp(acReadBuffer, acExitValue) != 0);
     }
-    
+
     return EXIT_SUCCESS;
 }
 
@@ -73,7 +78,7 @@ void parseArguments(int argc, char* argv[], ServerArguments* psArguments)
     if (argc >= 3)
     {
         psArguments->ucArgumentsValid = TRUE;
-        
+
         // Parse port number
         psArguments->siPort = atoi(argv[1]);
         if (psArguments->siPort == 0)
@@ -82,7 +87,7 @@ void parseArguments(int argc, char* argv[], ServerArguments* psArguments)
             psArguments->ucArgumentsValid = FALSE;
             fprintf(stderr, "The given port number is not a valid number.\n");
         }
-        
+
         // Parse file path
         psArguments->pcFilePath = argv[2];
         if (access(psArguments->pcFilePath, R_OK) == -1)

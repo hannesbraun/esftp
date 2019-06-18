@@ -23,8 +23,9 @@ int recvExact(int iSocketID, void* pvBuffer, int iBuflen, int iFlags)
     // Initialize amount of received bytes with zero
     int iCurrentReceivedBytes = 0;
     int iTotalReceivedBytes = 0;
-    
-    while (iBuflen > iTotalReceivedBytes) {
+
+    while (iBuflen > iTotalReceivedBytes)
+    {
         // Receive operation
         iCurrentReceivedBytes = recv(iSocketID, pvBuffer + iTotalReceivedBytes, iBuflen - iTotalReceivedBytes, iFlags);
         if (iCurrentReceivedBytes == -1)
@@ -32,10 +33,10 @@ int recvExact(int iSocketID, void* pvBuffer, int iBuflen, int iFlags)
             // Error
             return -1;
         }
-        
+
         // Update iTotalReceivedBytes
         iTotalReceivedBytes = iTotalReceivedBytes + iCurrentReceivedBytes;
     }
-    
+
     return iTotalReceivedBytes;
 }
