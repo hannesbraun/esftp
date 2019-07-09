@@ -27,7 +27,7 @@
  * @author Hannes Braun
  * @date 16.06.2019
  */
-void connectAndReceive(ClientArguments* psArguments)
+void connectAndReceive(ClientConfiguration* psConfiguration)
 {
     // General purpose return value
     int iReturnValue;
@@ -57,8 +57,8 @@ void connectAndReceive(ClientArguments* psArguments)
 
     // Setting properties for lobby address
     sServerAddress.sin_family = AF_INET;
-    sServerAddress.sin_port = htons(psArguments->siPort);
-    sServerAddress.sin_addr = psArguments->sIPAddress;
+    sServerAddress.sin_port = htons(psConfiguration->siPort);
+    sServerAddress.sin_addr = psConfiguration->sIPAddress;
 
     // Connecting
     iReturnValue = connect(iSocketID, (struct sockaddr*) &sServerAddress, sizeof(sServerAddress));
@@ -97,7 +97,15 @@ void connectAndReceive(ClientArguments* psArguments)
     uliBytesLeft = ui64FileSize;
 
     // Opening the file
-    iFileDescriptor = open(pcFileName, O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
+    if (psConfiguration->pcOutputFileName == NULL)
+    {
+        iFileDescriptor = open(pcFileName, O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
+    }
+    else
+    {
+        // Override sent file name
+        iFileDescriptor = open(psConfiguration->pcOutputFileName, O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
+    }
     if (iFileDescriptor == -1)
     {
         perror("An error ocurred while opening the new file");
@@ -116,7 +124,7 @@ void connectAndReceive(ClientArguments* psArguments)
         }
 
         iBytesReceived = recv(iSocketID, acDataBuffer, uiCurrentBufferSize, 0);
-
+        
         // Write to file
         iReturnValue = write(iFileDescriptor, acDataBuffer, iBytesReceived);
         if (iReturnValue == -1)

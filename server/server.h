@@ -10,15 +10,18 @@
 
 #include "serverConfig.h"
 
+#define ESFTP_VERSION "ESFTP 0.1.1\n"
+
 #define FALSE 0
 #define TRUE 1
 
-typedef struct ServerArguments_t
+typedef struct ServerConfiguration_t
 {
     char* pcFilePath;
     short int siPort;
-    unsigned char ucArgumentsValid;
-} ServerArguments;
+    unsigned char ucVersionFlag: 1;
+    unsigned char ucArgumentsValid: 1;
+} ServerConfiguration;
 
 typedef struct WorkerArguments_t
 {
@@ -32,9 +35,9 @@ typedef struct ServerControl_t
     int iLobbySocketID;
 } ServerControl;
 
-void parseArguments(int argc, char* argv[], ServerArguments* psArguments);
+void parseAndConfigure(int argc, char* argv[], ServerConfiguration* psArguments);
 
-void* lobby(void* pvArguments);
+void* lobby(void* pvConfiguration);
 
 void* worker(void* pvArguments);
 

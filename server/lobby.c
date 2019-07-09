@@ -24,10 +24,10 @@
  * @author Hannes Braun
  * @date 07.06.2019
  */
-void* lobby(void* pvArguments)
+void* lobby(void* pvConfiguration)
 {
     // Casting argument for better usage
-    ServerArguments* psArguments = (ServerArguments*) pvArguments;
+    ServerConfiguration* psConfiguration = (ServerConfiguration*) pvConfiguration;
 
     // Helping variable to run the basename function on
     char* pcFileNameAddress;
@@ -53,14 +53,14 @@ void* lobby(void* pvArguments)
     unsigned int uiWorkerAddressSize = sizeof(struct sockaddr_in);
 
     // Allocate memory for file name
-    pcFileNameAddress = (char*) malloc(sizeof(char) * (strlen(psArguments->pcFilePath) + 1));
+    pcFileNameAddress = (char*) malloc(sizeof(char) * (strlen(psConfiguration->pcFilePath) + 1));
     if (pcFileNameAddress == NULL)
     {
         fprintf(stderr, "An error ocurred while allocating memory for the file name.");
     }
 
     // Copy file path and get basename (file name without directories)
-    strncpy(pcFileNameAddress, psArguments->pcFilePath, strlen(psArguments->pcFilePath) + 1);
+    strncpy(pcFileNameAddress, psConfiguration->pcFilePath, strlen(psConfiguration->pcFilePath) + 1);
     pcFileName = basename(pcFileNameAddress);
 
     // Create lobby socket
@@ -72,7 +72,7 @@ void* lobby(void* pvArguments)
 
     // Setting properties for lobby address
     sLobbyAddress.sin_family = AF_INET;
-    sLobbyAddress.sin_port = htons(psArguments->siPort);
+    sLobbyAddress.sin_port = htons(psConfiguration->siPort);
     sLobbyAddress.sin_addr.s_addr = INADDR_ANY;
 
     // Binding
@@ -107,7 +107,7 @@ void* lobby(void* pvArguments)
 
         // Fill worker arguments
         psWorkerArguments->iWorkerSocketID = iWorkerSocketID;
-        psWorkerArguments->pcFilePath = psArguments->pcFilePath;
+        psWorkerArguments->pcFilePath = psConfiguration->pcFilePath;
         psWorkerArguments->pcFileName = pcFileName;
 
         // Create worker thread

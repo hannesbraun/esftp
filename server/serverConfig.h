@@ -8,6 +8,9 @@
 #ifndef serverConfig_h
 #define serverConfig_h
 
+// Default port to use
+#define ESFTP_PORT 6719
+
 // Max. amount of clients connected at the same time
 #define BACKLOGSIZE 42
 

@@ -5,6 +5,7 @@
  * @date 12.05.2019
  */
 
+#include <getopt.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,6 +13,7 @@
 #include <unistd.h>
 
 #include "server.h"
+#include "serverConfig.h"
 
 /**
  * @fn int main(int argc, char* argv[])
@@ -24,8 +26,7 @@
  */
 int main(int argc, char* argv[])
 {
-    // Server arguments provided by argv
-    ServerArguments sArguments;
+    ServerConfiguration sConfiguration;
 
     // Thread id of lobby
     pthread_t tidLobbyThread;
@@ -37,72 +38,111 @@ int main(int argc, char* argv[])
     // General purpose return value
     int iReturnValue;
 
-    parseArguments(argc, argv, &sArguments);
+    parseAndConfigure(argc, argv, &sConfiguration);
 
-    // Only start server if arguments are valid
-    if (sArguments.ucArgumentsValid == TRUE)
+    if (sConfiguration.ucVersionFlag == 1)
     {
-        printf("Starting esftp server...\n");
+        printf(ESFTP_VERSION);
+    }
+    else if (sConfiguration.ucArgumentsValid == TRUE)
+    {
+            // Only start server if arguments are valid
+            printf("Starting esftp server...\n");
 
-        // Starting the lobby thread
-        iReturnValue = pthread_create(&tidLobbyThread, NULL, lobby, &sArguments);
-        if (iReturnValue != 0)
-        {
-            fprintf(stderr, "An error ocurred while starting the lobby. pthread_create returned %d", iReturnValue);
-        }
+            // Starting the lobby thread
+            iReturnValue = pthread_create(&tidLobbyThread, NULL, lobby, &sConfiguration);
+            if (iReturnValue != 0)
+            {
+                fprintf(stderr, "An error ocurred while starting the lobby. pthread_create returned %d", iReturnValue);
+            }
 
-        do
-        {
-            printf(">");
-            fgets(acReadBuffer, 100, stdin);
-        } while (strcmp(acReadBuffer, acExitValue) != 0);
+            do
+            {
+                fgets(acReadBuffer, 100, stdin);
+            } while (strcmp(acReadBuffer, acExitValue) != 0);
+        
     }
 
     return EXIT_SUCCESS;
 }
 
 /**
- * @fn void parseArguments(int argc, char* argv[], ServerArguments* sArguments)
- * @brief Parses the given command line arguments and stores the parseed values in the given struct.
+ * @fn void parseAndConfigure(int argc, char* argv[], ServerConfiguration* psConfiguration)
+ * @brief This function parses the given command line arguments and stores the parseed values in the given struct.
  * @param argc amount of command line arguments
  * @param argv values of command line arguments
- * @param sArguments the struct to write the parsed information to
+ * @param psConfiguration the struct to write the parsed information to
  * @return void
  * @author Hannes Braun
- * @date 12.05.2019
- *
- * Required format: ./esftp-server 31416 /path/to/file
+ * @date 09.07.2019
  */
-void parseArguments(int argc, char* argv[], ServerArguments* psArguments)
+void parseAndConfigure(int argc, char* argv[], ServerConfiguration* psConfiguration)
 {
-    if (argc >= 3)
-    {
-        psArguments->ucArgumentsValid = TRUE;
+    psConfiguration->ucArgumentsValid = TRUE;
+    psConfiguration->ucVersionFlag = 0;
+    psConfiguration->siPort = ESFTP_PORT;
 
-        // Parse port number
-        psArguments->siPort = atoi(argv[1]);
-        if (psArguments->siPort == 0)
+    int iOptCode;
+    int iOptionIndex;
+    struct option asLongOptions[] =
+    {
+        {"version", no_argument, NULL, 1},
+        {"port", required_argument, NULL, 'p'},
+        {NULL, 0, NULL, 0}
+    };
+
+    while (1)
+    {
+        iOptCode = getopt_long(argc, argv, "p:", asLongOptions, &iOptionIndex);
+
+        if (iOptCode == -1)
         {
-            // Invalid input
-            psArguments->ucArgumentsValid = FALSE;
-            fprintf(stderr, "The given port number is not a valid number.\n");
+            // No more options found
+            break;
         }
 
+        switch (iOptCode)
+        {
+            case 1:
+                // Version
+                psConfiguration->ucVersionFlag = 1;
+                break;
+
+            case 'p':
+                // Port
+                psConfiguration->siPort = atoi(optarg) % 65536;
+                if (psConfiguration->siPort <= 0)
+                {
+                    // Invalid input
+                    psConfiguration->ucArgumentsValid = FALSE;
+                    fprintf(stderr, "The given port number is not valid.\n");
+                }
+                break;
+
+            case '?':
+                    break;
+            default:
+                break;
+        }
+    }
+
+    if (optind < argc)
+    {
         // Parse file path
-        psArguments->pcFilePath = argv[2];
-        if (access(psArguments->pcFilePath, R_OK) == -1)
+        psConfiguration->pcFilePath = argv[optind];
+        if (access(psConfiguration->pcFilePath, R_OK) == -1)
         {
             // File doesn't exist or is not readable
-            psArguments->ucArgumentsValid = FALSE;
-            fprintf(stderr, "Error while trying to access the file %s:", psArguments->pcFilePath);
+            psConfiguration->ucArgumentsValid = FALSE;
+            fprintf(stderr, "Error while trying to access the file %s:", psConfiguration->pcFilePath);
             perror(NULL);
         }
     }
-    else
+    else if (psConfiguration->ucVersionFlag == 0)
     {
         // Not enough arguments
-        psArguments->ucArgumentsValid = FALSE;
+        psConfiguration->ucArgumentsValid = FALSE;
         fprintf(stderr, "Not enough arguments given.\n");
-        fprintf(stderr, "Usage: %s <port number> <file path>\n", argv[0]);
+        fprintf(stderr, "Usage: %s <options> <file path>\n", argv[0]);
     }
 }

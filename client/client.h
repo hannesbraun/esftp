@@ -10,20 +10,25 @@
 
 #include <arpa/inet.h>
 
+#define ESFTP_VERSION "ESFTP 0.1.1\n"
+#define ESFTP_PORT 6719
+
 #define FALSE 0
 #define TRUE 1
 
 #define RECVBUFFERSIZE 4096
 
-typedef struct ClientArguments_t
+typedef struct ClientConfiguration_t
 {
     struct in_addr sIPAddress;
+    char* pcOutputFileName;
     short int siPort;
-    unsigned char ucArgumentsValid;
-} ClientArguments;
+    unsigned char ucVersionFlag: 1;
+    unsigned char ucArgumentsValid: 1;
+} ClientConfiguration;
 
-void parseArguments(int argc, char* argv[], ClientArguments* psArguments);
+void parseAndConfigure(int argc, char* argv[], ClientConfiguration* psConfiguration);
 
-void connectAndReceive(ClientArguments* psArguments);
+void connectAndReceive(ClientConfiguration* psConfiguration);
 
 #endif
