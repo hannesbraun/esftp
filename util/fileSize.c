@@ -5,9 +5,7 @@
  * @date 16.05.2019
  */
 
-#include <fcntl.h>
-#include <stdio.h>
-#include <unistd.h>
+#include "fileSize.h"
 
 /**
  * @fn unsigned long int calculateFileSize(char* pcFilePath)
@@ -17,13 +15,13 @@
  * @author Hannes Braun
  * @date 16.05.2019
  */
-unsigned long int calculateFileSize(char* pcFilePath)
+int64_t calculateFileSize(char* pcFilePath)
 {
     // File descriptor of the file to get the size of
     int iFileDescriptor;
 
     // File size
-    unsigned int uliFileSize;
+    int64_t i64FileSize;
 
     // General purpose return value
     int iReturnValue;
@@ -36,8 +34,8 @@ unsigned long int calculateFileSize(char* pcFilePath)
     }
 
     // Get file size
-    uliFileSize = lseek(iFileDescriptor, 0, SEEK_END);
-    if (uliFileSize == -1)
+    i64FileSize = lseek(iFileDescriptor, 0, SEEK_END);
+    if (i64FileSize == -1)
     {
         perror("An error ocurred while getting the file size via lseek");
     }
@@ -49,5 +47,5 @@ unsigned long int calculateFileSize(char* pcFilePath)
         perror("An error ocurred while closing the file after getting its size");
     }
 
-    return uliFileSize;
+    return i64FileSize;
 }

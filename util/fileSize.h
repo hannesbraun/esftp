@@ -8,6 +8,11 @@
 #ifndef fileSize_h
 #define fileSize_h
 
-unsigned long int calculateFileSize(char* pcFilePath);
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <unistd.h>
+
+int64_t calculateFileSize(char* pcFilePath);
 
 #endif

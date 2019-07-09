@@ -36,7 +36,7 @@ void* worker(void* pvArguments)
     int iReadBytes;
 
     // File size and file name length to send
-    uint64_t ui64FileSize = calculateFileSize(psWorkerArguments->pcFilePath);
+    int64_t i64FileSize = calculateFileSize(psWorkerArguments->pcFilePath);
     uint16_t ui16FileNameLength = strlen(psWorkerArguments->pcFileName) + 1;
 
     // General purpose return value
@@ -64,7 +64,7 @@ void* worker(void* pvArguments)
     }
 
     // Send file size
-    iReturnValue = send(psWorkerArguments->iWorkerSocketID, &ui64FileSize, sizeof(ui64FileSize), 0);
+    iReturnValue = send(psWorkerArguments->iWorkerSocketID, &i64FileSize, sizeof(i64FileSize), 0);
     if (iReturnValue == -1)
     {
         perror("An error ocurred while sending the fize size");
