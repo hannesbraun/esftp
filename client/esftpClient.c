@@ -50,8 +50,8 @@ void connectAndReceive(ClientConfiguration* psConfiguration)
     // File descriptor
     int iFileDescriptor;
 
-    int iBytesReceived;
-    unsigned long int uliBytesLeft;
+    int64_t i64BytesReceived;
+    uint64_t ui64BytesLeft;
 
     iSocketID = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -94,7 +94,7 @@ void connectAndReceive(ClientConfiguration* psConfiguration)
     {
         perror("An error ocurred while receiving the file size");
     }
-    uliBytesLeft = ui64FileSize;
+    ui64BytesLeft = ui64FileSize;
 
     // Opening the file
     if (psConfiguration->pcOutputFileName == NULL)
@@ -112,28 +112,28 @@ void connectAndReceive(ClientConfiguration* psConfiguration)
     }
 
     // Receiving the file
-    while (uliBytesLeft > 0)
+    while (ui64BytesLeft > 0)
     {
-        if (uliBytesLeft > RECVBUFFERSIZE)
+        if (ui64BytesLeft > RECVBUFFERSIZE)
         {
             uiCurrentBufferSize = RECVBUFFERSIZE;
         }
         else
         {
-            uiCurrentBufferSize = uliBytesLeft;
+            uiCurrentBufferSize = ui64BytesLeft;
         }
 
-        iBytesReceived = recv(iSocketID, acDataBuffer, uiCurrentBufferSize, 0);
+        i64BytesReceived = recv(iSocketID, acDataBuffer, uiCurrentBufferSize, 0);
         
         // Write to file
-        iReturnValue = write(iFileDescriptor, acDataBuffer, iBytesReceived);
+        iReturnValue = write(iFileDescriptor, acDataBuffer, i64BytesReceived);
         if (iReturnValue == -1)
         {
             perror("An error ocurred while writing the received data to the file");
         }
 
         // Update bytes left
-        uliBytesLeft = uliBytesLeft - iBytesReceived;
+        ui64BytesLeft = ui64BytesLeft - i64BytesReceived;
     }
 
     // Closing the socket
