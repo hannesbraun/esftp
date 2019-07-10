@@ -31,4 +31,6 @@ void parseAndConfigure(int argc, char* argv[], ClientConfiguration* psConfigurat
 
 void connectAndReceive(ClientConfiguration* psConfiguration);
 
+void printStatus(char* const pcStatusString, short int siPreviousStrLen);
+
 #endif

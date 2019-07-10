@@ -7,15 +7,20 @@
 
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 #include "client.h"
 #include "../util/recvExact.h"
+
+#define STATUS_STRING_SIZE 80
 
 /**
  * @fn void parseArguments(int argc, char* argv[], ClientArguments* psArguments)
@@ -42,6 +47,14 @@ void connectAndReceive(ClientConfiguration* psConfiguration)
 
     // File name
     char* pcFileName;
+    
+    // Status printing
+    char acStatusString[STATUS_STRING_SIZE] = {0};
+    short int siPreviousStrLen;
+    uint64_t ui64PreviousBytesLeft;
+    struct timeval lastStatusPrint;
+    struct timeval currentTime;
+    unsigned long int uliTimeDiff;
 
     // Data buffer
     char acDataBuffer[RECVBUFFERSIZE];
@@ -61,10 +74,16 @@ void connectAndReceive(ClientConfiguration* psConfiguration)
     sServerAddress.sin_addr = psConfiguration->sIPAddress;
 
     // Connecting
+    printf("Connecting to %s... ", inet_ntoa(sServerAddress.sin_addr));
     iReturnValue = connect(iSocketID, (struct sockaddr*) &sServerAddress, sizeof(sServerAddress));
     if (iReturnValue == -1)
     {
+        printf("failed\n");
         perror("An error ocurred while connecting to the client");
+    }
+    else
+    {
+        printf("done\n");
     }
 
     // Getting file name length
@@ -95,6 +114,7 @@ void connectAndReceive(ClientConfiguration* psConfiguration)
         perror("An error ocurred while receiving the file size");
     }
     ui64BytesLeft = ui64FileSize;
+    ui64PreviousBytesLeft = ui64FileSize;
 
     // Opening the file
     if (psConfiguration->pcOutputFileName == NULL)
@@ -112,6 +132,9 @@ void connectAndReceive(ClientConfiguration* psConfiguration)
     }
 
     // Receiving the file
+    printf("Receiving file %s...\n", pcFileName);
+    siPreviousStrLen = 0;
+    gettimeofday(&lastStatusPrint, NULL);
     while (ui64BytesLeft > 0)
     {
         if (ui64BytesLeft > RECVBUFFERSIZE)
@@ -131,10 +154,34 @@ void connectAndReceive(ClientConfiguration* psConfiguration)
         {
             perror("An error ocurred while writing the received data to the file");
         }
-
+        
         // Update bytes left
         ui64BytesLeft = ui64BytesLeft - i64BytesReceived;
+        
+        // Update current time
+        iReturnValue = gettimeofday(&currentTime, NULL);
+        if (iReturnValue == -1)
+        {
+            perror("An error ocurred while getting the time of the day");
+        }
+        uliTimeDiff = (currentTime.tv_sec * 1000000 + currentTime.tv_usec) - (lastStatusPrint.tv_sec * 1000000 + lastStatusPrint.tv_usec);
+
+        // Update status 4 times per second
+        if (uliTimeDiff > 250000)
+        {
+            siPreviousStrLen = strlen(acStatusString);
+            snprintf(acStatusString, STATUS_STRING_SIZE, "Received %" PRIu64 " of %" PRIu64 " bytes | %d bytes/sec",
+                     (ui64FileSize - ui64BytesLeft),
+                     ui64FileSize,
+                     (unsigned int) (((ui64PreviousBytesLeft - ui64BytesLeft) / ((double) uliTimeDiff)) * 1000000));
+            printStatus(acStatusString, siPreviousStrLen);
+            
+            ui64PreviousBytesLeft = ui64BytesLeft;
+            lastStatusPrint = currentTime;
+        }
     }
+    
+    printf("\nFinished receiving file.\nClosing...\n");
 
     // Closing the socket
     iReturnValue = close(iSocketID);
@@ -151,4 +198,28 @@ void connectAndReceive(ClientConfiguration* psConfiguration)
     }
 
     free(pcFileName);
+}
+
+void printStatus(char* const pcStatusString, short int siPreviousStrLen)
+{
+    int iCounter;
+    int iBackwards = 0;
+    
+    // Move cursor backwards
+    for (iCounter = 0; iCounter < siPreviousStrLen; iCounter++) {
+        putchar('\b');
+    }
+    
+    // Erase
+    printf("%s", pcStatusString);
+    fflush(stdout);
+    for (iCounter = strlen(pcStatusString); iCounter < siPreviousStrLen; iCounter++) {
+        putchar(' ');
+        iBackwards++;
+    }
+    
+    // Go back to real string end
+    for (iCounter = 0; iCounter < iBackwards; iCounter++) {
+        putchar('\b');
+    }
 }
