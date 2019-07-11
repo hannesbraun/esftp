@@ -55,6 +55,7 @@ void connectAndReceive(ClientConfiguration* psConfiguration)
     struct timeval lastStatusPrint;
     struct timeval currentTime;
     unsigned long int uliTimeDiff;
+    unsigned int uiDownloadSpeed;
 
     // Data buffer
     char acDataBuffer[RECVBUFFERSIZE];
@@ -170,10 +171,13 @@ void connectAndReceive(ClientConfiguration* psConfiguration)
         if (uliTimeDiff > 250000)
         {
             siPreviousStrLen = strlen(acStatusString);
-            snprintf(acStatusString, STATUS_STRING_SIZE, "Received %" PRIu64 " of %" PRIu64 " bytes | %d bytes/sec",
+            uiDownloadSpeed = (unsigned int) (((ui64PreviousBytesLeft - ui64BytesLeft) / ((double) uliTimeDiff)) * 1000000);
+            snprintf(acStatusString, STATUS_STRING_SIZE, "Received %" PRIu64 " of %" PRIu64 " bytes | %d bytes/sec | ETA %" PRIu64 "m %" PRIu64 "s",
                      (ui64FileSize - ui64BytesLeft),
                      ui64FileSize,
-                     (unsigned int) (((ui64PreviousBytesLeft - ui64BytesLeft) / ((double) uliTimeDiff)) * 1000000));
+                     uiDownloadSpeed,
+                     (ui64BytesLeft / uiDownloadSpeed) / 60,
+                     (ui64BytesLeft / uiDownloadSpeed) % 60);
             printStatus(acStatusString, siPreviousStrLen);
             
             ui64PreviousBytesLeft = ui64BytesLeft;
