@@ -20,6 +20,8 @@
 #include "client.h"
 #include "../util/recvExact.h"
 
+#define _FILE_OFFSET_BITS 64
+
 #define STATUS_STRING_SIZE 80
 
 /**

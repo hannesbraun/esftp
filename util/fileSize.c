@@ -7,6 +7,8 @@
 
 #include "fileSize.h"
 
+#define _FILE_OFFSET_BITS 64
+
 /**
  * @fn unsigned long int calculateFileSize(char* pcFilePath)
  * @brief This function calculates the size of the given file.

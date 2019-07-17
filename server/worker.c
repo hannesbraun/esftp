@@ -16,6 +16,8 @@
 #include "server.h"
 #include "../util/fileSize.h"
 
+#define _FILE_OFFSET_BITS 64
+
 /**
  * @fn void* worker(void* pvArguments)
  * @brief Sends the file (and the metadata) to the connected client.
