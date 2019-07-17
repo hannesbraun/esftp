@@ -7,6 +7,7 @@
 
 #include <getopt.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,6 +35,10 @@ int main(int argc, char* argv[])
     // Char arrays for working with console input
     char acReadBuffer[100];
     char* acExitValue = "shutdown\n";
+    
+    // New sigaction for SIGPIPE
+    struct sigaction newSigactionSigpipe;
+    newSigactionSigpipe.sa_handler = SIG_IGN;
 
     // General purpose return value
     int iReturnValue;
@@ -48,6 +53,9 @@ int main(int argc, char* argv[])
     {
             // Only start server if arguments are valid
             printf("Starting esftp server...\n");
+        
+            // Disable SIGPIPE
+            sigaction(SIGPIPE, &newSigactionSigpipe, NULL);
 
             // Starting the lobby thread
             iReturnValue = pthread_create(&tidLobbyThread, NULL, lobby, &sConfiguration);
