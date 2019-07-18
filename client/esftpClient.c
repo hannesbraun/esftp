@@ -5,6 +5,8 @@
  * @date 16.06.2019
  */
 
+#define _FILE_OFFSET_BITS 64
+
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <inttypes.h>
@@ -19,8 +21,6 @@
 
 #include "client.h"
 #include "../util/recvExact.h"
-
-#define _FILE_OFFSET_BITS 64
 
 #define STATUS_STRING_SIZE 80
 

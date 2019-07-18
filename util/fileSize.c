@@ -5,9 +5,9 @@
  * @date 16.05.2019
  */
 
-#include "fileSize.h"
-
 #define _FILE_OFFSET_BITS 64
+
+#include "fileSize.h"
 
 /**
  * @fn unsigned long int calculateFileSize(char* pcFilePath)

@@ -5,6 +5,8 @@
  * @date 18.06.2019
  */
 
+#define _FILE_OFFSET_BITS 64
+
 #include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -15,8 +17,6 @@
 
 #include "server.h"
 #include "../util/fileSize.h"
-
-#define _FILE_OFFSET_BITS 64
 
 /**
  * @fn void* worker(void* pvArguments)
