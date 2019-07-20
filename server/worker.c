@@ -49,6 +49,7 @@ void* worker(void* pvArguments)
     if (iFileDescriptor == -1)
     {
         perror("An error ocurred while opening the file");
+        goto errorDuringOpening;
     }
 
     // Send length of file name string (including terminating null character)
@@ -56,6 +57,7 @@ void* worker(void* pvArguments)
     if (iReturnValue == -1)
     {
         perror("An error ocurred while sending the length of the file name string");
+        goto errorDuringTransmission;
     }
 
     // Send file name
@@ -63,6 +65,7 @@ void* worker(void* pvArguments)
     if (iReturnValue == -1)
     {
         perror("An error ocurred while sending the file name");
+        goto errorDuringTransmission;
     }
 
     // Send file size
@@ -70,6 +73,7 @@ void* worker(void* pvArguments)
     if (iReturnValue == -1)
     {
         perror("An error ocurred while sending the fize size");
+        goto errorDuringTransmission;
     }
 
     do
@@ -79,6 +83,7 @@ void* worker(void* pvArguments)
         if (iReadBytes == -1)
         {
             perror("An error ocurred while reading the file");
+            goto errorDuringTransmission;
         }
 
         if (iReadBytes > 0)
@@ -88,22 +93,27 @@ void* worker(void* pvArguments)
             if (iReturnValue == -1)
             {
                 perror("An error ocurred while sending the file");
+                goto errorDuringTransmission;
             }
         }
     } while (iReadBytes > 0);
-
-    // Close socket
-    iReturnValue = close(psWorkerArguments->iWorkerSocketID);
-    if (iReturnValue == -1)
-    {
-        perror("An error ocurred while closing the worker socket");
-    }
+    
+errorDuringTransmission:
 
     // Close file
     iReturnValue = close(iFileDescriptor);
     if (iReturnValue == -1)
     {
         perror("An error ocurred while closing the file");
+    }
+    
+errorDuringOpening:
+    
+    // Close socket
+    iReturnValue = close(psWorkerArguments->iWorkerSocketID);
+    if (iReturnValue == -1)
+    {
+        perror("An error ocurred while closing the worker socket");
     }
 
     // Free memory for arguments
