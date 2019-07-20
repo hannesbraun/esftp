@@ -37,7 +37,7 @@ typedef struct ServerControl_t
 
 void parseAndConfigure(int argc, char* argv[], ServerConfiguration* psArguments);
 
-void* lobby(void* pvConfiguration);
+void lobby(ServerConfiguration* psConfiguration);
 
 void* worker(void* pvArguments);
 

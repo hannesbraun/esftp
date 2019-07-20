@@ -17,18 +17,15 @@
 #include "server.h"
 
 /**
- * @fn void* lobby(void* pvArguments)
+ * @fn void lobby(ServerConfiguration* psConfiguration)
  * @brief Handles new connections and starts the worker threads.
- * @param pvArguments the arguments to run this lobby with (provided as a ServerArguments struct)
- * @return void* This function is just returning NULL to satisfy pthread.
+ * @param psConfiguration the arguments to run this lobby with
+ * @return void
  * @author Hannes Braun
- * @date 07.06.2019
+ * @date 21.07.2019
  */
-void* lobby(void* pvConfiguration)
+void lobby(ServerConfiguration* psConfiguration)
 {
-    // Casting argument for better usage
-    ServerConfiguration* psConfiguration = (ServerConfiguration*) pvConfiguration;
-
     // Helping variable to run the basename function on
     char* pcFileNameAddress;
 
@@ -127,5 +124,5 @@ void* lobby(void* pvConfiguration)
 
     free(pcFileNameAddress);
 
-    return NULL;
+    return;
 }

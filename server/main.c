@@ -6,11 +6,9 @@
  */
 
 #include <getopt.h>
-#include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 
 #include "server.h"
@@ -23,25 +21,15 @@
  * @param argv values of command line arguments
  * @return int exit value of the process
  * @author Hannes Braun
- * @date 12.05.2019
+ * @date 21.07.2019
  */
 int main(int argc, char* argv[])
 {
     ServerConfiguration sConfiguration;
-
-    // Thread id of lobby
-    pthread_t tidLobbyThread;
-
-    // Char arrays for working with console input
-    char acReadBuffer[100];
-    char* acExitValue = "shutdown\n";
     
     // New sigaction for SIGPIPE
     struct sigaction newSigactionSigpipe;
     newSigactionSigpipe.sa_handler = SIG_IGN;
-
-    // General purpose return value
-    int iReturnValue;
 
     parseAndConfigure(argc, argv, &sConfiguration);
 
@@ -57,18 +45,8 @@ int main(int argc, char* argv[])
             // Disable SIGPIPE
             sigaction(SIGPIPE, &newSigactionSigpipe, NULL);
 
-            // Starting the lobby thread
-            iReturnValue = pthread_create(&tidLobbyThread, NULL, lobby, &sConfiguration);
-            if (iReturnValue != 0)
-            {
-                fprintf(stderr, "An error ocurred while starting the lobby. pthread_create returned %d", iReturnValue);
-            }
-
-            do
-            {
-                fgets(acReadBuffer, 100, stdin);
-            } while (strcmp(acReadBuffer, acExitValue) != 0);
-        
+            // Executing the lobby
+            lobby(&sConfiguration);
     }
 
     return EXIT_SUCCESS;
@@ -128,7 +106,7 @@ void parseAndConfigure(int argc, char* argv[], ServerConfiguration* psConfigurat
                 break;
 
             case '?':
-                    break;
+                break;
             default:
                 break;
         }
