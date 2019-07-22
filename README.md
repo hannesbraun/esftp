@@ -1,6 +1,6 @@
 # esftp (in development)
 
-"esftp" (even simpler file transfer protocal) is a (hopefully) simple tool implementing a simple protocol to transfer a file over the network. You can start an `esftp-server` serving a file and multiple instances of `esftp-client` can receive the file.
+"esftp" (even simpler file transfer protocol) is a (hopefully) simple tool implementing a simple protocol to transfer a file over the network. You can start an `esftp-server` serving a file and multiple instances of `esftp-client` can receive the file.
 
 ## Building from source
 
