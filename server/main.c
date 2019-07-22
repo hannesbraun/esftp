@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include "../util/printVersion.h"
 #include "server.h"
 #include "serverConfig.h"
 
@@ -27,6 +28,8 @@ int main(int argc, char* argv[])
 {
     ServerConfiguration sConfiguration;
     
+    VersionOutput eVersionOutput = server;
+    
     // New sigaction for SIGPIPE
     struct sigaction newSigactionSigpipe;
     newSigactionSigpipe.sa_handler = SIG_IGN;
@@ -35,7 +38,7 @@ int main(int argc, char* argv[])
 
     if (sConfiguration.ucVersionFlag == 1)
     {
-        printf(ESFTP_VERSION);
+        printVersion(eVersionOutput);
     }
     else if (sConfiguration.ucArgumentsValid == TRUE)
     {

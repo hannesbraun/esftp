@@ -10,6 +10,7 @@
 #include <stdlib.h>
 
 #include "client.h"
+#include "../util/printVersion.h"
 
 /**
  * @fn int main(int argc, char* argv[])
@@ -23,12 +24,14 @@
 int main(int argc, char* argv[])
 {
     ClientConfiguration sConfiguration;
+    
+    VersionOutput eVersionOutput = client;
 
     parseAndConfigure(argc, argv, &sConfiguration);
 
     if (sConfiguration.ucVersionFlag == 1)
     {
-        printf(ESFTP_VERSION);
+        printVersion(eVersionOutput);
     }
     else if (sConfiguration.ucArgumentsValid == TRUE)
     {
@@ -51,8 +54,6 @@ int main(int argc, char* argv[])
  */
 void parseAndConfigure(int argc, char* argv[], ClientConfiguration* psConfiguration)
 {
-    printf("Parsing arguments...\n");
-    
     psConfiguration->ucArgumentsValid = TRUE;
     psConfiguration->pcOutputFileName = NULL;
     psConfiguration->ucVersionFlag = 0;

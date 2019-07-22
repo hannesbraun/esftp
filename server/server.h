@@ -10,8 +10,6 @@
 
 #include "serverConfig.h"
 
-#define ESFTP_VERSION "ESFTP 0.1.1\n"
-
 #define FALSE 0
 #define TRUE 1
 
