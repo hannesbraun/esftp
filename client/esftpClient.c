@@ -49,7 +49,7 @@ void connectAndReceive(ClientConfiguration* psConfiguration)
 
     // File name
     char* pcFileName;
-    
+
     // Status printing
     char acStatusString[STATUS_STRING_SIZE] = {0};
     short int siPreviousStrLen;
@@ -103,7 +103,7 @@ void connectAndReceive(ClientConfiguration* psConfiguration)
         perror("An error ocurred while allocating memory for the file name");
     }
 
-    // Getting file name length
+    // Getting file name
     iReturnValue = recvExact(iSocketID, pcFileName, ui16FileNameLength * sizeof(char), 0);
     if (iReturnValue == -1)
     {
@@ -150,17 +150,17 @@ void connectAndReceive(ClientConfiguration* psConfiguration)
         }
 
         i64BytesReceived = recv(iSocketID, acDataBuffer, uiCurrentBufferSize, 0);
-        
+
         // Write to file
         iReturnValue = write(iFileDescriptor, acDataBuffer, i64BytesReceived);
         if (iReturnValue == -1)
         {
             perror("An error ocurred while writing the received data to the file");
         }
-        
+
         // Update bytes left
         ui64BytesLeft = ui64BytesLeft - i64BytesReceived;
-        
+
         // Update current time
         iReturnValue = gettimeofday(&currentTime, NULL);
         if (iReturnValue == -1)
@@ -173,7 +173,7 @@ void connectAndReceive(ClientConfiguration* psConfiguration)
         if (uliTimeDiff > 250000)
         {
             siPreviousStrLen = strlen(acStatusString);
-            uiDownloadSpeed = (unsigned int) (((ui64PreviousBytesLeft - ui64BytesLeft) / ((double) uliTimeDiff)) * 1000000);
+            uiDownloadSpeed = (unsigned int)(((ui64PreviousBytesLeft - ui64BytesLeft) / ((double) uliTimeDiff)) * 1000000);
             snprintf(acStatusString, STATUS_STRING_SIZE, "Received %" PRIu64 " of %" PRIu64 " bytes | %d bytes/sec | ETA %" PRIu64 "m %" PRIu64 "s",
                      (ui64FileSize - ui64BytesLeft),
                      ui64FileSize,
@@ -181,12 +181,12 @@ void connectAndReceive(ClientConfiguration* psConfiguration)
                      (ui64BytesLeft / uiDownloadSpeed) / 60,
                      (ui64BytesLeft / uiDownloadSpeed) % 60);
             printStatus(acStatusString, siPreviousStrLen);
-            
+
             ui64PreviousBytesLeft = ui64BytesLeft;
             lastStatusPrint = currentTime;
         }
     }
-    
+
     printf("\nFinished receiving file.\nClosing...\n");
 
     // Closing the socket
@@ -210,22 +210,25 @@ void printStatus(char* const pcStatusString, short int siPreviousStrLen)
 {
     int iCounter;
     int iBackwards = 0;
-    
+
     // Move cursor backwards
-    for (iCounter = 0; iCounter < siPreviousStrLen; iCounter++) {
+    for (iCounter = 0; iCounter < siPreviousStrLen; iCounter++)
+    {
         putchar('\b');
     }
-    
+
     // Erase
     printf("%s", pcStatusString);
     fflush(stdout);
-    for (iCounter = strlen(pcStatusString); iCounter < siPreviousStrLen; iCounter++) {
+    for (iCounter = strlen(pcStatusString); iCounter < siPreviousStrLen; iCounter++)
+    {
         putchar(' ');
         iBackwards++;
     }
-    
+
     // Go back to real string end
-    for (iCounter = 0; iCounter < iBackwards; iCounter++) {
+    for (iCounter = 0; iCounter < iBackwards; iCounter++)
+    {
         putchar('\b');
     }
 }

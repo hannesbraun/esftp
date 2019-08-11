@@ -24,7 +24,7 @@
 int main(int argc, char* argv[])
 {
     ClientConfiguration sConfiguration;
-    
+
     VersionOutput eVersionOutput = client;
 
     parseAndConfigure(argc, argv, &sConfiguration);
@@ -68,7 +68,7 @@ void parseAndConfigure(int argc, char* argv[], ClientConfiguration* psConfigurat
         {"output", required_argument, NULL, 'o'},
         {NULL, 0, NULL, 0}
     };
-    
+
     while (1)
     {
 
@@ -79,19 +79,19 @@ void parseAndConfigure(int argc, char* argv[], ClientConfiguration* psConfigurat
             // No more options found
             break;
         }
-        
+
         switch (iOptCode)
         {
             case 1:
                 // Version
                 psConfiguration->ucVersionFlag = 1;
                 break;
-                
+
             case 'o':
                 // Output
                 psConfiguration->pcOutputFileName = optarg;
                 break;
-                
+
             case 'p':
                 // Port
                 psConfiguration->siPort = atoi(optarg) % 65536;
@@ -102,14 +102,14 @@ void parseAndConfigure(int argc, char* argv[], ClientConfiguration* psConfigurat
                     fprintf(stderr, "The given port number is not valid.\n");
                 }
                 break;
-                
+
             case '?':
             default:
                 break;
         }
-        
+
     }
-    
+
     if (optind < argc)
     {
         // Parse ip address
