@@ -34,10 +34,12 @@
  * @author Hannes Braun
  * @date 16.06.2019
  */
-void connectAndReceive(ClientConfiguration* psConfiguration)
+int connectAndReceive(ClientConfiguration* psConfiguration)
 {
     // General purpose return value
     int iReturnValue;
+
+    unsigned char ucErrorOcurred = 0;
 
     int iSocketID;
 
@@ -83,6 +85,8 @@ void connectAndReceive(ClientConfiguration* psConfiguration)
     {
         printf("failed\n");
         perror("An error ocurred while connecting to the client");
+        ucErrorOcurred = 1;
+        goto errorDuringSetup1;
     }
     else
     {
@@ -94,6 +98,8 @@ void connectAndReceive(ClientConfiguration* psConfiguration)
     if (iReturnValue == -1)
     {
         perror("An error ocurred while receiving the length of the file name");
+        ucErrorOcurred = 1;
+        goto errorDuringSetup2;
     }
 
     // Allocating memory for file name
@@ -101,6 +107,8 @@ void connectAndReceive(ClientConfiguration* psConfiguration)
     if (pcFileName == NULL)
     {
         perror("An error ocurred while allocating memory for the file name");
+        ucErrorOcurred = 1;
+        goto errorDuringSetup2;
     }
 
     // Getting file name
@@ -108,6 +116,8 @@ void connectAndReceive(ClientConfiguration* psConfiguration)
     if (iReturnValue == -1)
     {
         perror("An error ocurred while receiving the file name");
+        ucErrorOcurred = 1;
+        goto errorDuringSetup3;
     }
 
     // Getting file size
@@ -115,6 +125,8 @@ void connectAndReceive(ClientConfiguration* psConfiguration)
     if (iReturnValue == -1)
     {
         perror("An error ocurred while receiving the file size");
+        ucErrorOcurred = 1;
+        goto errorDuringSetup3;
     }
     ui64BytesLeft = ui64FileSize;
     ui64PreviousBytesLeft = ui64FileSize;
@@ -132,6 +144,8 @@ void connectAndReceive(ClientConfiguration* psConfiguration)
     if (iFileDescriptor == -1)
     {
         perror("An error ocurred while opening the new file");
+        ucErrorOcurred = 1;
+        goto errorDuringSetup3;
     }
 
     // Receiving the file
@@ -150,12 +164,20 @@ void connectAndReceive(ClientConfiguration* psConfiguration)
         }
 
         i64BytesReceived = recv(iSocketID, acDataBuffer, uiCurrentBufferSize, 0);
+        if (i64BytesReceived == -1)
+        {
+            perror("An error ocurred while receiving the file");
+            ucErrorOcurred = 1;
+            goto errorDuringReceive;
+        }
 
         // Write to file
         iReturnValue = write(iFileDescriptor, acDataBuffer, i64BytesReceived);
         if (iReturnValue == -1)
         {
             perror("An error ocurred while writing the received data to the file");
+            ucErrorOcurred = 1;
+            goto errorDuringReceive;
         }
 
         // Update bytes left
@@ -166,6 +188,8 @@ void connectAndReceive(ClientConfiguration* psConfiguration)
         if (iReturnValue == -1)
         {
             perror("An error ocurred while getting the time of the day");
+            ucErrorOcurred = 1;
+            goto errorDuringReceive;
         }
         uliTimeDiff = (currentTime.tv_sec * 1000000 + currentTime.tv_usec) - (lastStatusPrint.tv_sec * 1000000 + lastStatusPrint.tv_usec);
 
@@ -189,12 +213,7 @@ void connectAndReceive(ClientConfiguration* psConfiguration)
 
     printf("\nFinished receiving file.\nClosing...\n");
 
-    // Closing the socket
-    iReturnValue = close(iSocketID);
-    if (iReturnValue == -1)
-    {
-        perror("An error ocurred while closing the socket");
-    }
+errorDuringReceive:
 
     // Closing file
     iReturnValue = close(iFileDescriptor);
@@ -203,7 +222,29 @@ void connectAndReceive(ClientConfiguration* psConfiguration)
         perror("An error ocurred while closing the file");
     }
 
+errorDuringSetup3:
+
     free(pcFileName);
+
+errorDuringSetup2:
+
+    // Closing the socket
+    iReturnValue = close(iSocketID);
+    if (iReturnValue == -1)
+    {
+        perror("An error ocurred while closing the socket");
+    }
+
+errorDuringSetup1:
+
+    if (ucErrorOcurred == 1)
+    {
+        return -1;
+    }
+    else
+    {
+        return 0;
+    }
 }
 
 void printStatus(char* const pcStatusString, short int siPreviousStrLen)

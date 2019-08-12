@@ -28,7 +28,7 @@ typedef struct ClientConfiguration_t
 
 void parseAndConfigure(int argc, char* argv[], ClientConfiguration* psConfiguration);
 
-void connectAndReceive(ClientConfiguration* psConfiguration);
+int connectAndReceive(ClientConfiguration* psConfiguration);
 
 void printStatus(char* const pcStatusString, short int siPreviousStrLen);
 

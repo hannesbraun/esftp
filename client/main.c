@@ -23,6 +23,8 @@
  */
 int main(int argc, char* argv[])
 {
+    int iApplicationReturn = EXIT_SUCCESS;
+
     ClientConfiguration sConfiguration;
 
     VersionOutput eVersionOutput = client;
@@ -36,10 +38,10 @@ int main(int argc, char* argv[])
     else if (sConfiguration.ucArgumentsValid == TRUE)
     {
         // Only start client if arguments are valid
-        connectAndReceive(&sConfiguration);
+        iApplicationReturn = connectAndReceive(&sConfiguration);
     }
 
-    return EXIT_SUCCESS;
+    return iApplicationReturn;
 }
 
 /**
