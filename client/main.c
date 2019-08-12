@@ -40,6 +40,10 @@ int main(int argc, char* argv[])
         // Only start client if arguments are valid
         iApplicationReturn = connectAndReceive(&sConfiguration);
     }
+    else
+    {
+        iApplicationReturn = EXIT_FAILURE;
+    }
 
     return iApplicationReturn;
 }
