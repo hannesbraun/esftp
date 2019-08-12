@@ -26,8 +26,8 @@ void printVersion(VersionOutput eVersionOutput)
         printf("esftp-client");
     }
     printf(" (esftp) ");
-    
+
     printf(ESFTP_VERSION);
-    
+
     putchar('\n');
 }

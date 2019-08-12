@@ -10,7 +10,7 @@
 
 #include <stdio.h>
 
-#define ESFTP_VERSION "0.2"
+#define ESFTP_VERSION "0.3"
 
 typedef enum VersionOutput_t
 {
