@@ -239,7 +239,7 @@ errorDuringSetup1:
 
     if (ucErrorOcurred == 1)
     {
-        return -1;
+        return 1;
     }
     else
     {
