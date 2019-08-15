@@ -8,6 +8,8 @@
 #ifndef server_h
 #define server_h
 
+#include <pthread.h>
+
 #include "serverConfig.h"
 
 #define FALSE 0
@@ -26,17 +28,25 @@ typedef struct WorkerArguments_t
     int iWorkerSocketID;
     char* pcFilePath;
     char* pcFileName;
+    pthread_t tid;
+    unsigned char ucFinished: 1;
 } WorkerArguments;
 
-typedef struct ServerControl_t
+typedef enum ShutdownState_t
 {
-    int iLobbySocketID;
-} ServerControl;
+    noShutdown,
+    friendlyShutdown,
+    forceShutdown
+} ShutdownState;
+
+extern volatile ShutdownState serverShutdownState;
 
 void parseAndConfigure(int argc, char* argv[], ServerConfiguration* psArguments);
 
 void lobby(ServerConfiguration* psConfiguration);
 
 void* worker(void* pvArguments);
+
+void sigintHandler(int iSignum);
 
 #endif

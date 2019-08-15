@@ -7,6 +7,7 @@
 
 #define _FILE_OFFSET_BITS 64
 
+#include <errno.h>
 #include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -36,6 +37,9 @@ void* worker(void* pvArguments)
 
     // Read bytes at last read operation
     int iReadBytes;
+
+    // Flag to indicate skipping the read operation (because of EINTR)
+    unsigned char ucSkipRead = 0;
 
     // File size and file name length to send
     int64_t i64FileSize = calculateFileSize(psWorkerArguments->pcFilePath);
@@ -78,12 +82,20 @@ void* worker(void* pvArguments)
 
     do
     {
-        // Reading
-        iReadBytes = read(iFileDescriptor, acBuffer, BUFFERSIZE);
-        if (iReadBytes == -1)
+        if (ucSkipRead == 0)
         {
-            perror("An error ocurred while reading the file");
-            goto errorDuringTransmission;
+            // Reading
+            iReadBytes = read(iFileDescriptor, acBuffer, BUFFERSIZE);
+            if (iReadBytes == -1)
+            {
+                if (errno == EINTR)
+                {
+                    // Interrupted, try again
+                    continue;
+                }
+                perror("An error ocurred while reading the file");
+                goto errorDuringTransmission;
+            }
         }
 
         if (iReadBytes > 0)
@@ -92,12 +104,19 @@ void* worker(void* pvArguments)
             iReturnValue = send(psWorkerArguments->iWorkerSocketID, acBuffer, iReadBytes, 0);
             if (iReturnValue == -1)
             {
+                if (errno == EINTR)
+                {
+                    // Interrupted, try again but skip read operation
+                    ucSkipRead = 1;
+                    continue;
+                }
                 perror("An error ocurred while sending the file");
                 goto errorDuringTransmission;
             }
+            ucSkipRead = 0;
         }
-    } while (iReadBytes > 0);
-    
+    } while (iReadBytes > 0 && (serverShutdownState == noShutdown || serverShutdownState == friendlyShutdown));
+
 errorDuringTransmission:
 
     // Close file
@@ -106,9 +125,9 @@ errorDuringTransmission:
     {
         perror("An error ocurred while closing the file");
     }
-    
+
 errorDuringOpening:
-    
+
     // Close socket
     iReturnValue = close(psWorkerArguments->iWorkerSocketID);
     if (iReturnValue == -1)
@@ -116,8 +135,6 @@ errorDuringOpening:
         perror("An error ocurred while closing the worker socket");
     }
 
-    // Free memory for arguments
-    free(pvArguments);
-
+    psWorkerArguments->ucFinished = 1;
     return NULL;
 }

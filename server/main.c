@@ -26,13 +26,20 @@
  */
 int main(int argc, char* argv[])
 {
+    // General purpose return value
+    int iReturnValue;
+
     ServerConfiguration sConfiguration;
-    
+
     VersionOutput eVersionOutput = server;
-    
+
     // New sigaction for SIGPIPE
     struct sigaction newSigactionSigpipe;
     newSigactionSigpipe.sa_handler = SIG_IGN;
+
+    // New sigaction for SIGINT
+    struct sigaction newSigactionSigint;
+    newSigactionSigint.sa_handler = &sigintHandler;
 
     parseAndConfigure(argc, argv, &sConfiguration);
 
@@ -42,15 +49,26 @@ int main(int argc, char* argv[])
     }
     else if (sConfiguration.ucArgumentsValid == TRUE)
     {
-            // Only start server if arguments are valid
-            printf("Starting esftp server...\n");
-        
-            // Disable SIGPIPE
-            sigaction(SIGPIPE, &newSigactionSigpipe, NULL);
+        // Only start server if arguments are valid
+        printf("Starting esftp server...\n");
 
-            // Executing the lobby
-            lobby(&sConfiguration);
+        // Disable SIGPIPE
+        sigaction(SIGPIPE, &newSigactionSigpipe, NULL);
+
+        // Initialize SIGINT handler
+        serverShutdownState = noShutdown;
+        iReturnValue = sigaction(SIGINT, &newSigactionSigint, NULL);
+        if (iReturnValue == -1)
+        {
+            perror("An error ocurred while changing the SIGINT action");
+            goto error;
+        }
+
+        // Executing the lobby
+        lobby(&sConfiguration);
     }
+
+error:
 
     return EXIT_SUCCESS;
 }
@@ -133,5 +151,21 @@ void parseAndConfigure(int argc, char* argv[], ServerConfiguration* psConfigurat
         psConfiguration->ucArgumentsValid = FALSE;
         fprintf(stderr, "Not enough arguments given.\n");
         fprintf(stderr, "Usage: %s <options> <file path>\n", argv[0]);
+    }
+}
+
+void sigintHandler(int iSignum)
+{
+    if (serverShutdownState == noShutdown)
+    {
+        serverShutdownState = friendlyShutdown;
+    }
+    else if (serverShutdownState == friendlyShutdown)
+    {
+        serverShutdownState = forceShutdown;
+    }
+    else if (serverShutdownState == forceShutdown)
+    {
+        exit(-1);
     }
 }
