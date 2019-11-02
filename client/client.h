@@ -17,13 +17,12 @@
 
 #define RECVBUFFERSIZE 4096
 
-typedef struct ClientConfiguration_t
-{
-    struct in_addr sIPAddress;
-    char* pcOutputFileName;
-    short int siPort;
-    unsigned char ucVersionFlag: 1;
-    unsigned char ucArgumentsValid: 1;
+typedef struct ClientConfiguration_t {
+        struct in_addr sIPAddress;
+        char* pcOutputFileName;
+        short int siPort;
+        unsigned char ucVersionFlag: 1;
+        unsigned char ucArgumentsValid: 1;
 } ClientConfiguration;
 
 void parseAndConfigure(int argc, char* argv[], ClientConfiguration* psConfiguration);

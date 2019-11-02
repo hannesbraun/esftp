@@ -17,17 +17,13 @@
  */
 void printVersion(VersionOutput eVersionOutput)
 {
-    if (eVersionOutput == server)
-    {
-        printf("esftp-server");
-    }
-    else if (eVersionOutput == client)
-    {
-        printf("esftp-client");
-    }
-    printf(" (esftp) ");
+        if (eVersionOutput == server)
+                printf("esftp-server");
+        else if (eVersionOutput == client)
+                printf("esftp-client");
+        printf(" (esftp) ");
 
-    printf(ESFTP_VERSION);
+        printf(ESFTP_VERSION);
 
-    putchar('\n');
+        putchar('\n');
 }

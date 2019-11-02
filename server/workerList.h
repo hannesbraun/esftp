@@ -5,11 +5,10 @@
 
 #define RESIZE_FACTOR 1.42
 
-typedef struct WorkerList_t
-{
-    WorkerArguments** tidArray;
-    unsigned int uiArraySize;
-    unsigned int uiUsedSlots;
+typedef struct WorkerList_t {
+        WorkerArguments** tidArray;
+        unsigned int uiArraySize;
+        unsigned int uiUsedSlots;
 } WorkerList;
 
 int wlInitialize(WorkerList* pWorkerList);

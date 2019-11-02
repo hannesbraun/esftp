@@ -12,10 +12,9 @@
 
 #define ESFTP_VERSION "0.3"
 
-typedef enum VersionOutput_t
-{
-    server,
-    client
+typedef enum VersionOutput_t {
+        server,
+        client
 } VersionOutput;
 
 void printVersion(VersionOutput eVersionOutput);

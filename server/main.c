@@ -26,51 +26,47 @@
  */
 int main(int argc, char* argv[])
 {
-    // General purpose return value
-    int iReturnValue;
+        // General purpose return value
+        int iReturnValue;
 
-    ServerConfiguration sConfiguration;
+        ServerConfiguration sConfiguration;
 
-    VersionOutput eVersionOutput = server;
+        VersionOutput eVersionOutput = server;
 
-    // New sigaction for SIGPIPE
-    struct sigaction newSigactionSigpipe;
-    newSigactionSigpipe.sa_handler = SIG_IGN;
+        // New sigaction for SIGPIPE
+        struct sigaction newSigactionSigpipe;
+        newSigactionSigpipe.sa_handler = SIG_IGN;
 
-    // New sigaction for SIGINT
-    struct sigaction newSigactionSigint;
-    newSigactionSigint.sa_handler = &sigintHandler;
+        // New sigaction for SIGINT
+        struct sigaction newSigactionSigint;
+        newSigactionSigint.sa_handler = &sigintHandler;
 
-    parseAndConfigure(argc, argv, &sConfiguration);
+        parseAndConfigure(argc, argv, &sConfiguration);
 
-    if (sConfiguration.ucVersionFlag == 1)
-    {
-        printVersion(eVersionOutput);
-    }
-    else if (sConfiguration.ucArgumentsValid == TRUE)
-    {
-        // Only start server if arguments are valid
-        printf("Starting esftp server...\n");
+        if (sConfiguration.ucVersionFlag == 1)
+                printVersion(eVersionOutput);
+        else if (sConfiguration.ucArgumentsValid == TRUE) {
+                // Only start server if arguments are valid
+                printf("Starting esftp server...\n");
 
-        // Disable SIGPIPE
-        sigaction(SIGPIPE, &newSigactionSigpipe, NULL);
+                // Disable SIGPIPE
+                sigaction(SIGPIPE, &newSigactionSigpipe, NULL);
 
-        // Initialize SIGINT handler
-        serverShutdownState = noShutdown;
-        iReturnValue = sigaction(SIGINT, &newSigactionSigint, NULL);
-        if (iReturnValue == -1)
-        {
-            perror("An error ocurred while changing the SIGINT action");
-            goto error;
+                // Initialize SIGINT handler
+                serverShutdownState = noShutdown;
+                iReturnValue = sigaction(SIGINT, &newSigactionSigint, NULL);
+                if (iReturnValue == -1) {
+                        perror("An error ocurred while changing the SIGINT action");
+                        goto error;
+                }
+
+                // Executing the lobby
+                lobby(&sConfiguration);
         }
-
-        // Executing the lobby
-        lobby(&sConfiguration);
-    }
 
 error:
 
-    return EXIT_SUCCESS;
+        return EXIT_SUCCESS;
 }
 
 /**
@@ -85,87 +81,72 @@ error:
  */
 void parseAndConfigure(int argc, char* argv[], ServerConfiguration* psConfiguration)
 {
-    psConfiguration->ucArgumentsValid = TRUE;
-    psConfiguration->ucVersionFlag = 0;
-    psConfiguration->siPort = ESFTP_PORT;
+        psConfiguration->ucArgumentsValid = TRUE;
+        psConfiguration->ucVersionFlag = 0;
+        psConfiguration->siPort = ESFTP_PORT;
 
-    int iOptCode;
-    int iOptionIndex;
-    struct option asLongOptions[] =
-    {
-        {"version", no_argument, NULL, 1},
-        {"port", required_argument, NULL, 'p'},
-        {NULL, 0, NULL, 0}
-    };
+        int iOptCode;
+        int iOptionIndex;
+        struct option asLongOptions[] = {
+                {"version", no_argument, NULL, 1},
+                {"port", required_argument, NULL, 'p'},
+                {NULL, 0, NULL, 0}
+        };
 
-    while (1)
-    {
-        iOptCode = getopt_long(argc, argv, "p:", asLongOptions, &iOptionIndex);
+        while (1) {
+                iOptCode = getopt_long(argc, argv, "p:", asLongOptions, &iOptionIndex);
 
-        if (iOptCode == -1)
-        {
-            // No more options found
-            break;
-        }
-
-        switch (iOptCode)
-        {
-            case 1:
-                // Version
-                psConfiguration->ucVersionFlag = 1;
-                break;
-
-            case 'p':
-                // Port
-                psConfiguration->siPort = atoi(optarg) % 65536;
-                if (psConfiguration->siPort <= 0)
-                {
-                    // Invalid input
-                    psConfiguration->ucArgumentsValid = FALSE;
-                    fprintf(stderr, "The given port number is not valid.\n");
+                if (iOptCode == -1) {
+                        // No more options found
+                        break;
                 }
-                break;
 
-            case '?':
-                break;
-            default:
-                break;
-        }
-    }
+                switch (iOptCode) {
+                        case 1:
+                                // Version
+                                psConfiguration->ucVersionFlag = 1;
+                                break;
 
-    if (optind < argc)
-    {
-        // Parse file path
-        psConfiguration->pcFilePath = argv[optind];
-        if (access(psConfiguration->pcFilePath, R_OK) == -1)
-        {
-            // File doesn't exist or is not readable
-            psConfiguration->ucArgumentsValid = FALSE;
-            fprintf(stderr, "Error while trying to access the file %s:", psConfiguration->pcFilePath);
-            perror(NULL);
+                        case 'p':
+                                // Port
+                                psConfiguration->siPort = atoi(optarg) % 65536;
+                                if (psConfiguration->siPort <= 0) {
+                                        // Invalid input
+                                        psConfiguration->ucArgumentsValid = FALSE;
+                                        fprintf(stderr, "The given port number is not valid.\n");
+                                }
+                                break;
+
+                        case '?':
+                                break;
+                        default:
+                                break;
+                }
         }
-    }
-    else if (psConfiguration->ucVersionFlag == 0)
-    {
-        // Not enough arguments
-        psConfiguration->ucArgumentsValid = FALSE;
-        fprintf(stderr, "Not enough arguments given.\n");
-        fprintf(stderr, "Usage: %s <options> <file path>\n", argv[0]);
-    }
+
+        if (optind < argc) {
+                // Parse file path
+                psConfiguration->pcFilePath = argv[optind];
+                if (access(psConfiguration->pcFilePath, R_OK) == -1) {
+                        // File doesn't exist or is not readable
+                        psConfiguration->ucArgumentsValid = FALSE;
+                        fprintf(stderr, "Error while trying to access the file %s:", psConfiguration->pcFilePath);
+                        perror(NULL);
+                }
+        } else if (psConfiguration->ucVersionFlag == 0) {
+                // Not enough arguments
+                psConfiguration->ucArgumentsValid = FALSE;
+                fprintf(stderr, "Not enough arguments given.\n");
+                fprintf(stderr, "Usage: %s <options> <file path>\n", argv[0]);
+        }
 }
 
 void sigintHandler(int iSignum)
 {
-    if (serverShutdownState == noShutdown)
-    {
-        serverShutdownState = friendlyShutdown;
-    }
-    else if (serverShutdownState == friendlyShutdown)
-    {
-        serverShutdownState = forceShutdown;
-    }
-    else if (serverShutdownState == forceShutdown)
-    {
-        exit(-1);
-    }
+        if (serverShutdownState == noShutdown)
+                serverShutdownState = friendlyShutdown;
+        else if (serverShutdownState == friendlyShutdown)
+                serverShutdownState = forceShutdown;
+        else if (serverShutdownState == forceShutdown)
+                exit(-1);
 }

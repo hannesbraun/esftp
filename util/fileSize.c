@@ -19,35 +19,29 @@
  */
 int64_t calculateFileSize(char* pcFilePath)
 {
-    // File descriptor of the file to get the size of
-    int iFileDescriptor;
+        // File descriptor of the file to get the size of
+        int iFileDescriptor;
 
-    // File size
-    int64_t i64FileSize;
+        // File size
+        int64_t i64FileSize;
 
-    // General purpose return value
-    int iReturnValue;
+        // General purpose return value
+        int iReturnValue;
 
-    // Open file
-    iFileDescriptor = open(pcFilePath, O_RDONLY);
-    if (iFileDescriptor == -1)
-    {
-        perror("An error ocurred while opening the file for calculating file size");
-    }
+        // Open file
+        iFileDescriptor = open(pcFilePath, O_RDONLY);
+        if (iFileDescriptor == -1)
+                perror("An error ocurred while opening the file for calculating file size");
 
-    // Get file size
-    i64FileSize = lseek(iFileDescriptor, 0, SEEK_END);
-    if (i64FileSize == -1)
-    {
-        perror("An error ocurred while getting the file size via lseek");
-    }
+        // Get file size
+        i64FileSize = lseek(iFileDescriptor, 0, SEEK_END);
+        if (i64FileSize == -1)
+                perror("An error ocurred while getting the file size via lseek");
 
-    // Close file
-    iReturnValue = close(iFileDescriptor);
-    if (iReturnValue == -1)
-    {
-        perror("An error ocurred while closing the file after getting its size");
-    }
+        // Close file
+        iReturnValue = close(iFileDescriptor);
+        if (iReturnValue == -1)
+                perror("An error ocurred while closing the file after getting its size");
 
-    return i64FileSize;
+        return i64FileSize;
 }

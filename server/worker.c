@@ -29,112 +29,97 @@
  */
 void* worker(void* pvArguments)
 {
-    // Cast to WorkerArguments for better access
-    WorkerArguments* psWorkerArguments = (WorkerArguments*) pvArguments;
+        // Cast to WorkerArguments for better access
+        WorkerArguments* psWorkerArguments = (WorkerArguments*) pvArguments;
 
-    // Buffer for reading file
-    char acBuffer[BUFFERSIZE];
+        // Buffer for reading file
+        char acBuffer[BUFFERSIZE];
 
-    // Read bytes at last read operation
-    int iReadBytes;
+        // Read bytes at last read operation
+        int iReadBytes;
 
-    // Flag to indicate skipping the read operation (because of EINTR)
-    unsigned char ucSkipRead = 0;
+        // Flag to indicate skipping the read operation (because of EINTR)
+        unsigned char ucSkipRead = 0;
 
-    // File size and file name length to send
-    int64_t i64FileSize = calculateFileSize(psWorkerArguments->pcFilePath);
-    uint16_t ui16FileNameLength = strlen(psWorkerArguments->pcFileName) + 1;
+        // File size and file name length to send
+        int64_t i64FileSize = calculateFileSize(psWorkerArguments->pcFilePath);
+        uint16_t ui16FileNameLength = strlen(psWorkerArguments->pcFileName) + 1;
 
-    // General purpose return value
-    int iReturnValue;
+        // General purpose return value
+        int iReturnValue;
 
-    // Open the file
-    int iFileDescriptor = open(psWorkerArguments->pcFilePath, O_RDONLY);
-    if (iFileDescriptor == -1)
-    {
-        perror("An error ocurred while opening the file");
-        goto errorDuringOpening;
-    }
-
-    // Send length of file name string (including terminating null character)
-    iReturnValue = send(psWorkerArguments->iWorkerSocketID, &ui16FileNameLength, sizeof(ui16FileNameLength), 0);
-    if (iReturnValue == -1)
-    {
-        perror("An error ocurred while sending the length of the file name string");
-        goto errorDuringTransmission;
-    }
-
-    // Send file name
-    iReturnValue = send(psWorkerArguments->iWorkerSocketID, psWorkerArguments->pcFileName, strlen(psWorkerArguments->pcFileName) + 1, 0);
-    if (iReturnValue == -1)
-    {
-        perror("An error ocurred while sending the file name");
-        goto errorDuringTransmission;
-    }
-
-    // Send file size
-    iReturnValue = send(psWorkerArguments->iWorkerSocketID, &i64FileSize, sizeof(i64FileSize), 0);
-    if (iReturnValue == -1)
-    {
-        perror("An error ocurred while sending the fize size");
-        goto errorDuringTransmission;
-    }
-
-    do
-    {
-        if (ucSkipRead == 0)
-        {
-            // Reading
-            iReadBytes = read(iFileDescriptor, acBuffer, BUFFERSIZE);
-            if (iReadBytes == -1)
-            {
-                if (errno == EINTR)
-                {
-                    // Interrupted, try again
-                    continue;
-                }
-                perror("An error ocurred while reading the file");
-                goto errorDuringTransmission;
-            }
+        // Open the file
+        int iFileDescriptor = open(psWorkerArguments->pcFilePath, O_RDONLY);
+        if (iFileDescriptor == -1) {
+                perror("An error ocurred while opening the file");
+                goto errorDuringOpening;
         }
 
-        if (iReadBytes > 0)
-        {
-            // Sending File
-            iReturnValue = send(psWorkerArguments->iWorkerSocketID, acBuffer, iReadBytes, 0);
-            if (iReturnValue == -1)
-            {
-                if (errno == EINTR)
-                {
-                    // Interrupted, try again but skip read operation
-                    ucSkipRead = 1;
-                    continue;
-                }
-                perror("An error ocurred while sending the file");
+        // Send length of file name string (including terminating null character)
+        iReturnValue = send(psWorkerArguments->iWorkerSocketID, &ui16FileNameLength, sizeof(ui16FileNameLength), 0);
+        if (iReturnValue == -1) {
+                perror("An error ocurred while sending the length of the file name string");
                 goto errorDuringTransmission;
-            }
-            ucSkipRead = 0;
         }
-    } while (iReadBytes > 0 && (serverShutdownState == noShutdown || serverShutdownState == friendlyShutdown));
+
+        // Send file name
+        iReturnValue = send(psWorkerArguments->iWorkerSocketID, psWorkerArguments->pcFileName, strlen(psWorkerArguments->pcFileName) + 1, 0);
+        if (iReturnValue == -1) {
+                perror("An error ocurred while sending the file name");
+                goto errorDuringTransmission;
+        }
+
+        // Send file size
+        iReturnValue = send(psWorkerArguments->iWorkerSocketID, &i64FileSize, sizeof(i64FileSize), 0);
+        if (iReturnValue == -1) {
+                perror("An error ocurred while sending the fize size");
+                goto errorDuringTransmission;
+        }
+
+        do {
+                if (ucSkipRead == 0) {
+                        // Reading
+                        iReadBytes = read(iFileDescriptor, acBuffer, BUFFERSIZE);
+                        if (iReadBytes == -1) {
+                                if (errno == EINTR) {
+                                        // Interrupted, try again
+                                        continue;
+                                }
+                                perror("An error ocurred while reading the file");
+                                goto errorDuringTransmission;
+                        }
+                }
+
+                if (iReadBytes > 0) {
+                        // Sending File
+                        iReturnValue = send(psWorkerArguments->iWorkerSocketID, acBuffer, iReadBytes, 0);
+                        if (iReturnValue == -1) {
+                                if (errno == EINTR) {
+                                        // Interrupted, try again but skip read operation
+                                        ucSkipRead = 1;
+                                        continue;
+                                }
+                                perror("An error ocurred while sending the file");
+                                goto errorDuringTransmission;
+                        }
+                        ucSkipRead = 0;
+                }
+        } while (iReadBytes > 0 && (serverShutdownState == noShutdown || serverShutdownState == friendlyShutdown));
 
 errorDuringTransmission:
 
-    // Close file
-    iReturnValue = close(iFileDescriptor);
-    if (iReturnValue == -1)
-    {
-        perror("An error ocurred while closing the file");
-    }
+        // Close file
+        iReturnValue = close(iFileDescriptor);
+        if (iReturnValue == -1)
+                perror("An error ocurred while closing the file");
 
 errorDuringOpening:
 
-    // Close socket
-    iReturnValue = close(psWorkerArguments->iWorkerSocketID);
-    if (iReturnValue == -1)
-    {
-        perror("An error ocurred while closing the worker socket");
-    }
+        // Close socket
+        iReturnValue = close(psWorkerArguments->iWorkerSocketID);
+        if (iReturnValue == -1)
+                perror("An error ocurred while closing the worker socket");
 
-    psWorkerArguments->ucFinished = 1;
-    return NULL;
+        psWorkerArguments->ucFinished = 1;
+        return NULL;
 }
