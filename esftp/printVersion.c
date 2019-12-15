@@ -5,6 +5,7 @@
  * @date 22.07.2019
  */
 
+#include <stdio.h>
 #include "printVersion.h"
 
 /**
@@ -15,12 +16,13 @@
  * @author Hannes Braun
  * @date 22.07.2019
  */
-void printVersion(VersionOutput eVersionOutput)
+void printVersion(enum VersionOutput versionOutput)
 {
-        if (eVersionOutput == server)
+        if (versionOutput == server) {
                 printf("esftp-server");
-        else if (eVersionOutput == client)
+        } else if (versionOutput == client) {
                 printf("esftp-client");
+        }
         printf(" (esftp) ");
 
         printf(ESFTP_VERSION);

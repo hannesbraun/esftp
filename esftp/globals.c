@@ -7,4 +7,4 @@
 
 #include "server.h"
 
-volatile ShutdownState serverShutdownState;
+volatile enum ShutdownState serverShutdownState;

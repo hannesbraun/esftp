@@ -8,22 +8,22 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include "commons.h"
 #include "printVersion.h"
 #include "server.h"
-#include "config.h"
+#include "serverConfig.h"
 #include "lobby.h"
+
+int parseAndConfigure(int argc, char* argv[], struct LobbyConfig* config);
 
 int main(int argc, char* argv[])
 {
         // General purpose return value
         int retVal;
 
-        // Return value (program exit)
-        int retValExit = EXIT_FAILURE;
-
-        LobbyConfig config;
-
-        //VersionOutput versionOutput = server;
+        struct LobbyConfig config;
+        char* items[MAX_ITEMS];
+        config.items = items;
 
         // New sigaction for SIGPIPE
         struct sigaction newSigactionSigpipe;
@@ -33,44 +33,53 @@ int main(int argc, char* argv[])
         struct sigaction newSigactionSigint;
         newSigactionSigint.sa_handler = &sigintHandler;
 
-        parseAndConfigure(argc, argv, &config);
+        printf("Starting esftp server...\n");
 
-        //if (config.ucVersionFlag == 1)
-        //        printVersion(eVersionOutput);
-        if (config.argumentsValid == 1) {
-                // Disable SIGPIPE
-                sigaction(SIGPIPE, &newSigactionSigpipe, NULL);
+        retVal = parseAndConfigure(argc, argv, &config);
+
+        if (retVal == 0) {
+                // Disable SIGPIPE (no need to terminate the process)
+                retVal = sigaction(SIGPIPE, &newSigactionSigpipe, NULL);
+                if (retVal == -1) {
+                        perror("An error ocurred while disabling SIGPIPE");
+                        retVal = EXIT_FAILURE;
+                        goto error;
+                }
 
                 // Initialize SIGINT handler
                 serverShutdownState = noShutdown;
                 retVal = sigaction(SIGINT, &newSigactionSigint, NULL);
                 if (retVal == -1) {
                         perror("An error ocurred while changing the SIGINT action");
+                        retVal = EXIT_FAILURE;
                         goto error;
                 }
 
                 // Execute the lobby
-                lobby(&config);
+                retVal = lobby(&config);
+                if (retVal == 0) {
+                        retVal = EXIT_SUCCESS;
+                } else {
+                        retVal = EXIT_FAILURE;
+                }
 
-                retValExit = EXIT_SUCCESS;
         }
 
 error:
-
-        return retValExit;
+        return retVal;
 }
 
 /**
  * This function parses the given command line arguments.
  * The parsed information will be written into config.
+ * If the arguments are invalid, -1 will be returned. Else 0 will be returned.
  */
-void parseAndConfigure(int argc, char** argv, LobbyConfig* config)
+int parseAndConfigure(int argc, char** argv, struct LobbyConfig* config)
 {
-        // Counting variable for reading the paths
-        long int itemNum = 0;
+        // Return value indicating if the arguments are valid
+        int retVal = 0;
 
         // Defaults
-        config->argumentsValid = TRUE;
         config->printVersion = 0;
         config->port = ESFTP_PORT;
 
@@ -92,16 +101,16 @@ void parseAndConfigure(int argc, char** argv, LobbyConfig* config)
 
                 switch (optCode) {
                         case 1:
-                                // Version
+                                // Print version
                                 config->printVersion = 1;
                                 break;
 
                         case 'p':
-                                // Port
+                                // Set port
                                 config->port = atoi(optarg) % 65536;
                                 if (config->port <= 0) {
                                         // Invalid input
-                                        config->argumentsValid = 0;
+                                        retVal = -1;
                                         fprintf(stderr, "The given port number is not valid.\n");
                                 }
                                 break;
@@ -114,25 +123,33 @@ void parseAndConfigure(int argc, char** argv, LobbyConfig* config)
 
         if (optind < argc) {
                 do {
-                        // Store paths
-                        config->items[itemNum] = argv[optind];
+                        // Store paths/items
+                        config->items[config->itemsLen] = argv[optind];
                         optind++;
-                        itemNum++;
+                        config->itemsLen++;
+                        if (config->itemsLen >= MAX_ITEMS) {
+                                retVal = -1;
+                                fprintf(stderr, "Too much items. Only %d itmes are allowed.\n", MAX_ITEMS);
+                                break;
+                        }
                 }  while (optind < argc);
         } else if (config->printVersion == 0) {
                 // Not enough arguments
-                config->argumentsValid = 0;
+                retVal = -1;
                 fprintf(stderr, "Not enough arguments given.\n");
                 fprintf(stderr, "Usage: %s <options> <items to send>\n", argv[0]);
         }
+
+        return retVal;
 }
 
 void sigintHandler(int iSignum)
 {
-        if (serverShutdownState == noShutdown)
+        if (serverShutdownState == noShutdown) {
                 serverShutdownState = friendlyShutdown;
-        else if (serverShutdownState == friendlyShutdown)
+        } else if (serverShutdownState == friendlyShutdown) {
                 serverShutdownState = forceShutdown;
-        else if (serverShutdownState == forceShutdown)
-                exit(-1);
+        } else if (serverShutdownState == forceShutdown) {
+                exit(EXIT_FAILURE);
+        }
 }

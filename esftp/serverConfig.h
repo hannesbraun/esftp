@@ -1,17 +1,17 @@
 /**
- * General configuation properties for the client and server
+ * General configuation properties for the server
  */
 
-#ifndef config_h
-#define config_h
+#ifndef serverconfig_h
+#define serverconfig_h
 
-// Default port to use
-#define ESFTP_PORT 6719
-
-// Backlog size (server)
+// Backlog size
 #define BACKLOGSIZE 42
 
-// Block size for reading the data out of a file (server)
+// Block size for reading the data out of a file
 #define BUFFERSIZE 4096
+
+// Max. amount of items
+#define MAX_ITEMS 256
 
 #endif

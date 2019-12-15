@@ -20,7 +20,7 @@
 #include <unistd.h>
 
 #include "client.h"
-#include "../util/recvExact.h"
+#include "recvExact.h"
 
 #define STATUS_STRING_SIZE 80
 

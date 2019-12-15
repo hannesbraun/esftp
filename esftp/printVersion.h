@@ -8,15 +8,13 @@
 #ifndef printVersion_h
 #define printVersion_h
 
-#include <stdio.h>
-
 #define ESFTP_VERSION "0.3"
 
-typedef enum VersionOutput_t {
+enum VersionOutput {
         server,
         client
-} VersionOutput;
+};
 
-void printVersion(VersionOutput eVersionOutput);
+void printVersion(enum VersionOutput versionOutput);
 
 #endif

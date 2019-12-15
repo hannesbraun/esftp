@@ -10,8 +10,6 @@
 
 #include <arpa/inet.h>
 
-#define ESFTP_PORT 6719
-
 #define FALSE 0
 #define TRUE 1
 

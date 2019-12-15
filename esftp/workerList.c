@@ -13,39 +13,42 @@
 #include <stdio.h>
 
 #include "server.h"
+#include "worker.h"
 #include "workerList.h"
 
-int wlInitialize(WorkerList* pWorkerList)
+int wlInitialize(struct WorkerList* workerList)
 {
-        pWorkerList->tidArray = (WorkerArguments**) malloc(1 * sizeof(WorkerArguments*));
-        if (pWorkerList->tidArray == NULL)
+        workerList->tidArray = (struct WorkerConfig**) malloc(1 * sizeof(struct WorkerConfig*));
+        if (workerList->tidArray == NULL) {
+                fprintf(stderr, "An error ocurred while allocating memory for the worker list.\n");
                 return -1;
-        pWorkerList->uiArraySize = 1u;
-        pWorkerList->uiUsedSlots = 0u;
+        }
+        workerList->arraySize = 1u;
+        workerList->usedSlots = 0u;
 
         return 0;
 }
 
-int wlCleanup(WorkerList* pWorkerList)
+int wlCleanup(struct WorkerList* workerList)
 {
-        int iCounter;
-        int iReturnValue;
+        int i;
+        int retVal;
 
-        for (iCounter = 0; iCounter < pWorkerList->uiUsedSlots; iCounter++) {
-                if (pWorkerList->tidArray[iCounter]->ucFinished == 1) {
+        for (i = 0; i < workerList->usedSlots; i++) {
+                if (workerList->tidArray[i]->finished == 1) {
                         // Delete from list
-                        iReturnValue = wlDelete(pWorkerList, iCounter);
-                        if (iReturnValue == -1) {
+                        retVal = wlDelete(workerList, i);
+                        if (retVal == -1) {
                                 // Deleting not successful
                                 return -1;
                         }
                 }
         }
 
-        if ((((float) pWorkerList->uiUsedSlots) / ((float) pWorkerList->uiArraySize)) < 0.5f) {
+        if ((((float) workerList->usedSlots) / ((float) workerList->arraySize)) < 0.5f) {
                 // Resize array
-                iReturnValue = wlResize(pWorkerList, pWorkerList->uiUsedSlots * RESIZE_FACTOR + 1);
-                if (iReturnValue == -1) {
+                retVal = wlResize(workerList, workerList->usedSlots * RESIZE_FACTOR + 1);
+                if (retVal == -1) {
                         // Resizing not successful (should not occur since this is only downsizing)
                         return -1;
                 }
@@ -54,88 +57,98 @@ int wlCleanup(WorkerList* pWorkerList)
         return 0;
 }
 
-int wlDelete(WorkerList* pWorkerList, int iIndex)
+int wlDelete(struct WorkerList* workerList, int index)
 {
-        int iCounter;
+        int i;
 
-        if (iIndex >= pWorkerList->uiUsedSlots || iIndex < 0) {
+        if (index >= workerList->usedSlots || index < 0) {
                 // Index invalid
+                fprintf(stderr, "Deleting worker from list not successful: index out of bounds\n");
                 return -1;
         }
 
         // Free space of worker arguments
-        free(pWorkerList->tidArray[iIndex]);
+        free(workerList->tidArray[index]);
 
         // Move elements
-        for (iCounter = iIndex + 1; iCounter < pWorkerList->uiUsedSlots; iCounter++)
-                pWorkerList->tidArray[iCounter - 1] = pWorkerList->tidArray[iCounter];
+        for (i = index + 1; i < workerList->usedSlots; i++) {
+                workerList->tidArray[i - 1] = workerList->tidArray[i];
+        }
 
         // Last slot is not used anymore
-        pWorkerList->uiUsedSlots--;
+        workerList->usedSlots--;
 
         return 0;
 }
 
-int wlAdd(WorkerList* pWorkerList, WorkerArguments* workerArguments)
+int wlAdd(struct WorkerList* workerList, struct WorkerConfig* workerConfig)
 {
-        int iReturnValue;
+        int retVal;
 
-        if (pWorkerList->uiArraySize == pWorkerList->uiUsedSlots) {
+        if (workerList->arraySize <= workerList->usedSlots) {
                 // Resize array
-                iReturnValue = wlResize(pWorkerList, pWorkerList->uiUsedSlots * RESIZE_FACTOR + 1);
-                if (iReturnValue == -1) {
+                retVal = wlResize(workerList, workerList->usedSlots * RESIZE_FACTOR + 1);
+                if (retVal == -1) {
                         // Resizing not successful
                         return -1;
                 }
         }
 
-        pWorkerList->tidArray[pWorkerList->uiUsedSlots] = workerArguments;
-        pWorkerList->uiUsedSlots++;
+        workerList->tidArray[workerList->usedSlots] = workerConfig;
+        workerList->usedSlots++;
 
         return 0;
 }
 
-int wlResize(WorkerList* pWorkerList, unsigned int uiNewArraySize)
+int wlResize(struct WorkerList* workerList, unsigned int newArraySize)
 {
-        if (uiNewArraySize < pWorkerList->uiUsedSlots) {
+        if (newArraySize < workerList->usedSlots) {
                 // Cannot resize (too small)
+                fprintf(stderr, "Resizing worker list failed: too small\n");
                 return -1;
         }
 
-        WorkerArguments** tidOldArray = pWorkerList->tidArray;
+        // Backup old pointer
+        struct WorkerConfig** tidOldArray = workerList->tidArray;
 
-        pWorkerList->tidArray = (WorkerArguments**) realloc(tidOldArray, uiNewArraySize * sizeof(WorkerArguments*));
-        if (pWorkerList->tidArray == NULL) {
+        workerList->tidArray = (struct WorkerConfig**) realloc(tidOldArray, newArraySize * sizeof(struct WorkerConfig*));
+        if (workerList->tidArray == NULL) {
                 // Allocating memory not successful
-                pWorkerList->tidArray = tidOldArray;
+                fprintf(stderr, "Resizing worker list failed: realloc failed\n");
+                workerList->tidArray = tidOldArray;
                 return -1;
         }
 
-        pWorkerList->uiArraySize = uiNewArraySize;
+        workerList->arraySize = newArraySize;
 
         return 0;
 }
 
-int wlJoin(WorkerList* pWorkerList)
+int wlJoin(struct WorkerList* workerList)
 {
-        int iReturnValue;
+        int retVal;
 
-        while (pWorkerList->uiUsedSlots != 0) {
-                iReturnValue = pthread_join(pWorkerList->tidArray[0]->tid, NULL);
-                if (iReturnValue == 0) {
-                        iReturnValue = wlDelete(pWorkerList, 0);
-                        if (iReturnValue == -1)
-                                fprintf(stderr, "An error ocurred while deleting the worker from the worker list.\n");
-                } else
+        while (workerList->usedSlots != 0) {
+                retVal = pthread_join(workerList->tidArray[0]->tid, NULL);
+                if (retVal == 0) {
+                        retVal = wlDelete(workerList, 0);
+                        if (retVal == -1) {
+                                return -1;
+                        }
+                } else {
                         return -1;
+                }
         }
 
-        wlCleanup(pWorkerList);
+        retVal = wlCleanup(workerList);
+        if (retVal == -1) {
+                return -1;
+        }
 
         return 0;
 }
 
-void wlFree(WorkerList* pWorkerList)
+void wlFree(struct WorkerList* workerList)
 {
-        free(pWorkerList->tidArray);
+        free(workerList->tidArray);
 }

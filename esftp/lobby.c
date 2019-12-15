@@ -6,7 +6,6 @@
 
 #include <arpa/inet.h>
 #include <errno.h>
-#include <libgen.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,63 +13,59 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include "workerList.h"
+#include "printVersion.h"
 #include "server.h"
+#include "serverConfig.h"
+#include "worker.h"
+#include "workerList.h"
 
-int checkItemAvaliability(char** items);
+int handleRequest(int lobbySocketID, struct WorkerList* workerList, struct LobbyConfig* lobbyConfig);
+int checkItemAvaliability(struct LobbyConfig* config);
 
 /**
  * The lobby mainly handles new connections and starts the worker threads.
  * It also includes other smaller functionalies.
  */
-void lobby(LobbyConfig* config)
+int lobby(struct LobbyConfig* config)
 {
-        // Helping variable to run the basename function on
-        //char* pcFileNameAddress;
-
-        // File name to transfer
-        //char* pcFileName;
-
-        // Thread id of the last created worker thread
-        pthread_t tidWorker;
-
         // Worker list
         struct WorkerList workerList;
 
         // General purpose return value
         int retVal;
 
+        int lobbyRetVal = 0;
+
         // The socket ids of the lobby and the last created worker
         int lobbySocketID;
-        int workerSocketID;
 
         struct sockaddr_in lobbyAddr;
 
-        struct WorkerConfig* workerConfig;
+        if (config->printVersion == 1) {
+                // Only print the version and exit
+                printVersion(server);
+                return 0;
+        }
 
-        // Allocate memory for file name
-        //pcFileNameAddress = (char*) malloc(sizeof(char) * (strlen(psConfiguration->pcFilePath) + 1));
-        //if (pcFileNameAddress == NULL) {
-        //        fprintf(stderr, "An error ocurred while allocating memory for the file name.\n");
-        //        goto errorDuringMalloc1;
-        //}
-
-        // Copy file path and get basename (file name without directories)
-        //strncpy(pcFileNameAddress, psConfiguration->pcFilePath, strlen(psConfiguration->pcFilePath) + 1);
-        //pcFileName = basename(pcFileNameAddress);
+        retVal = checkItemAvaliability(config);
+        if (retVal == -1) {
+                // Running the server/accessing the items is probably not going to work
+                return -1;
+        }
 
         // Initialize worker list
         retVal = wlInitialize(&workerList);
         if (retVal == -1) {
-                fprintf(stderr, "An error ocurred while allocating memory for the worker list.\n");
-                goto errorDuringWLInitialization;
+                lobbyRetVal = -1;
+                goto errorWLInit;
         }
 
         // Create lobby socket
         lobbySocketID = socket(AF_INET, SOCK_STREAM, 0);
         if (lobbySocketID == -1) {
+                lobbyRetVal = -1;
                 perror("An error ocurred while creating the lobby socket");
-                goto errorDuringSocketBuilding;
+                goto errorSocketBuild;
         }
 
         // Setting properties for lobby address
@@ -79,77 +74,94 @@ void lobby(LobbyConfig* config)
         lobbyAddr.sin_addr.s_addr = INADDR_ANY;
 
         // Binding
-        retVal = bind(lobbySocketID, (struct sockaddr*) &lobbyAddress, sizeof(lobbyAddress));
+        retVal = bind(lobbySocketID, (struct sockaddr*) &lobbyAddr, sizeof(lobbyAddr));
         if (retVal == -1) {
+                lobbyRetVal = -1;
                 perror("An error ocurred while binding");
-                goto errorDuringWork;
+                goto errorSocketBind;
         }
 
         // Activating listening mode
         retVal = listen(lobbySocketID, BACKLOGSIZE);
         if (retVal == -1) {
+                lobbyRetVal = -1;
                 perror("An error ocurred while setting socket to listening mode");
-                goto errorDuringWork;
+                goto errorSocketListen;
         }
 
+        // Main loop
         while (serverShutdownState == noShutdown) {
-                retVal = handleRequest(lobbySocketID, workerList);
+                retVal = handleRequest(lobbySocketID, &workerList, config);
                 switch (retVal) {
                         case -1:
                         case -2:
+                        case -4:
+                                // Try again, but wait a second to avoid wasting cpu time
                                 sleep(1);
                                 break;
-
+                        case -3:
+                        case -5:
+                        case -6:
+                        case -7:
+                                // Stop the server
+                                serverShutdownState = forceShutdown;
+                                lobbyRetVal = -1;
+                                break;
                         default:
                                 break;
                 }
         }
 
-errorDuringWork:
+        if (serverShutdownState == friendlyShutdown) {
+                printf("Initiating friendly shutdown...\n");
+        }
+
+errorSocketListen:
+errorSocketBind:
 
         // Closing the lobby socket
         retVal = close(lobbySocketID);
-        if (retVal == -1)
+        if (retVal == -1) {
+                lobbyRetVal = -1;
                 perror("An error ocurred while closing the lobby socket");
+        }
 
         retVal = wlJoin(&workerList);
-        if (retVal == -1)
-                perror("An error ocurred while joining the threads");
+        if (retVal == -1) {
+                lobbyRetVal = -1;
+        }
 
-errorDuringSocketBuilding:
+errorSocketBuild:
 
         wlFree(&workerList);
 
-errorDuringWLInitialization:
+errorWLInit:
 
-        free(fileNameAddress);
-
-errorDuringMalloc1:
-
-        return;
+        return lobbyRetVal;
 }
 
-int handleRequest(int lobbySocketID, WorkerList* workerList)
+int handleRequest(int lobbySocketID, struct WorkerList* workerList, struct LobbyConfig* lobbyConfig)
 {
         int tmp;
         int retVal = 0;
+        int tryAgain;
+
+        // Thread id of the last created worker thread
+        pthread_t tidWorker;
 
         int workerSocketID;
         struct sockaddr_in workerAddr;
         unsigned int workerAddrSize = sizeof(workerAddr);
 
-        // Allocate memory for the worker arguments
-        WorkerConfig* workerConfig = (WorkerConfig*) malloc(sizeof(struct WorkerConfig));
+        // Allocate memory for the worker config
+        struct WorkerConfig* workerConfig = (struct WorkerConfig*) malloc(sizeof(struct WorkerConfig));
         if (workerConfig == NULL) {
-                fprintf(stderr, "An error ocurred while allocating memory for the worker arguments. Waiting for the last started worker to finish...\n");
+                fprintf(stderr, "An error ocurred while allocating memory for the worker config. Trying to clean up the worker list and trying again...\n");
 
-                tmp = wlCleanup(&workerList);
-                if (tmp == -1)
-                        // Cleanup failed
-                        retVal = -2;
-                else
-                        // No memory, try again
-                        retVal = -1;
+                // Not catching return value here because this should an error shouldn't occur at cleanup
+                // Also, this seems irrelevant, since an error already ocurred.
+                wlCleanup(workerList);
+                retVal = -1;
 
                 goto cleanup;
         }
@@ -157,64 +169,104 @@ int handleRequest(int lobbySocketID, WorkerList* workerList)
         // Accept the connection
         workerSocketID = accept(lobbySocketID, (struct sockaddr*) &workerAddr, &workerAddrSize);
         if (workerSocketID == -1) {
-                if (errno == EINTR) {
-                        // Interrupted (likley by SIGINT), new iteration
-                        retVal = -3;
-                } else {
-                        retVal = -4;
-                        perror("An error orucced while accepting a connection");
+                switch (errno) {
+                        case ECONNABORTED:
+                        case EMFILE:
+                        case ENFILE:
+                        case ENOBUFS:
+                                perror("An non-fatal error ocurred while accepting a connection");
+                        case EINTR: // Interrupted (likley by SIGINT)
+                                // New iteration, try again
+                                retVal = -2;
+                                break;
+                        default:
+                                // Error -> leave lobby
+                                retVal = -3;
+                                perror("An error orucced while accepting a connection");
+                                break;
                 }
                 goto cleanup;
         }
 
         // Fill worker config
         workerConfig->socketID = workerSocketID;
-        workerConfig->pcFilePath = config->pcFilePath;
-        workerConfig->pcFileName = pcFileName;
+        workerConfig->items = lobbyConfig->items;
+        workerConfig->itemsLen = lobbyConfig->itemsLen;
         workerConfig->finished = 0;
 
         // Create worker thread
         tmp = pthread_create(&tidWorker, NULL, worker, workerConfig);
         if (tmp != 0) {
-                fprintf(stderr, "An error ocurred while starting the worker. pthread_create returned %d\n", tmp);
+                fprintf(stderr, "An error ocurred while starting the worker: %s\n", strerror(tmp));
 
-                tmp = close(workerSocketID);
-                if (tmp == -1)
+                if (errno == EAGAIN) {
+                        // Not enough resources, try again
+                        retVal = -4;
+                } else {
                         retVal = -5;
-                perror("An error ocurred while closing the socket in the error handling");
-                else
-                        retVal = -6;
+                }
 
                 goto cleanup;
         }
 
-        // Worker list cleanup (also reduces problems when adding the new worker (next step))
-        wlCleanup(&workerList);
+        // Worker list cleanup (also reduces problems when adding the next worker)
+        tmp = wlCleanup(workerList);
+        if (tmp == -1) {
+                // Should hopefully not occur
+                retVal = -6;
+        }
 
         // Add created thread/worker to worker list
         workerConfig->tid = tidWorker;
-        tmp = wlAdd(&workerList, workerConfig);
-        if (tmp == -1)
-                fprintf(stderr, "An error ocurred while adding the thread id to the worker list. This worker will not be tracked.\n");
+        tmp = wlAdd(workerList, workerConfig);
+        if (tmp == -1) {
+                // Probably out of memory -> better shut down the server to avoid memory leaks
+                retVal = -7;
+        }
 
 cleanup:
-        if (retVal < 0 && (retVal != -1 && retVal != -2))
+
+        if (retVal >= -4 && retVal <= -7) {
+                // Close socket since an error ocurred
+                tryAgain = 3;
+closeInterrupt:
+                tmp = close(workerSocketID);
+                if (tmp == -1) {
+                        if (errno == EINTR) {
+                                // Try again
+                                tryAgain--;
+                                if (tryAgain > 0) {
+                                        goto closeInterrupt;
+                                }
+                        }
+
+                        if (retVal == -4) {
+                                // Don't try again, better shut down the server
+                                retVal = -5;
+                        }
+                        perror("An error ocurred while closing the worker socket after pthread_failed");
+                }
+        }
+
+        if (retVal < -1) {
                 free(workerConfig);
+        }
 
 
         return retVal;
 }
 
 
-int checkItemAvaliability(char** items)
+int checkItemAvaliability(struct LobbyConfig* config)
 {
         int currentItem = 0;
-        int reVal = 0;
+        int retVal = 0;
+        int i;
 
-        while (config->items[currentItem] != NULL) {
+        for (i = 0; i < config->itemsLen; i++) {
                 if (access(config->items[currentItem], R_OK) == -1) {
-                        // File doesn't exist or is not readable
-                        retVal = 1;
+                        // Item doesn't exist or is not readable... it's an error
+                        retVal = -1;
                         fprintf(stderr, "Error while trying to access %s: %s", config->items[currentItem], strerror(errno));
                 }
         }

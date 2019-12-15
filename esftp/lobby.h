@@ -7,11 +7,11 @@
 
 struct LobbyConfig {
         char** items;
+        unsigned long int itemsLen;
         short int port;
         unsigned char printVersion: 1;
-        unsigned char argumentsValid: 1;
 };
 
-void lobby(LobbyConfig* config);
+int lobby(struct LobbyConfig* config);
 
 #endif

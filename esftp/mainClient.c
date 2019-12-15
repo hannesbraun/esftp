@@ -10,7 +10,8 @@
 #include <stdlib.h>
 
 #include "client.h"
-#include "../util/printVersion.h"
+#include "commons.h"
+#include "printVersion.h"
 
 /**
  * @fn int main(int argc, char* argv[])
@@ -27,17 +28,16 @@ int main(int argc, char* argv[])
 
         ClientConfiguration sConfiguration;
 
-        VersionOutput eVersionOutput = client;
-
         parseAndConfigure(argc, argv, &sConfiguration);
 
-        if (sConfiguration.ucVersionFlag == 1)
-                printVersion(eVersionOutput);
-        else if (sConfiguration.ucArgumentsValid == TRUE) {
+        if (sConfiguration.ucVersionFlag == 1) {
+                printVersion(client);
+        } else if (sConfiguration.ucArgumentsValid == TRUE) {
                 // Only start client if arguments are valid
                 iApplicationReturn = connectAndReceive(&sConfiguration);
-        } else
+        } else {
                 iApplicationReturn = EXIT_FAILURE;
+        }
 
         return iApplicationReturn;
 }

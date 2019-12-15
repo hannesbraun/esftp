@@ -2,19 +2,20 @@
 #include <pthread.h>
 
 #include "server.h"
+#include "worker.h"
 
 #define RESIZE_FACTOR 1.42
 
-typedef struct WorkerList_t {
-        WorkerArguments** tidArray;
-        unsigned int uiArraySize;
-        unsigned int uiUsedSlots;
+struct WorkerList {
+        struct WorkerConfig** tidArray;
+        unsigned int arraySize;
+        unsigned int usedSlots;
 } WorkerList;
 
-int wlInitialize(WorkerList* pWorkerList);
-int wlCleanup(WorkerList* pWorkerList);
-int wlDelete(WorkerList* pWorkerList, int iIndex);
-int wlAdd(WorkerList* pWorkerList, WorkerArguments* workerArguments);
-int wlResize(WorkerList* pWorkerList, unsigned int uiNewArraySize);
-int wlJoin(WorkerList* pWorkerList);
-void wlFree(WorkerList* pWorkerList);
+int wlInitialize(struct WorkerList* workerList);
+int wlCleanup(struct WorkerList* workerList);
+int wlDelete(struct WorkerList* workerList, int index);
+int wlAdd(struct WorkerList* workerList, struct WorkerConfig* workerConfig);
+int wlResize(struct WorkerList* workerList, unsigned int newArraySize);
+int wlJoin(struct WorkerList* workerList);
+void wlFree(struct WorkerList* workerList);
