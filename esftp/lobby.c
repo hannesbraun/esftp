@@ -126,6 +126,7 @@ errorSocketBind:
                 perror("An error ocurred while closing the lobby socket");
         }
 
+        // Wait until all workers are finished (incl. forceShutdown: workers will terminate as soon as possible)
         retVal = wlJoin(&workerList);
         if (retVal == -1) {
                 lobbyRetVal = -1;

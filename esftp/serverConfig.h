@@ -14,4 +14,7 @@
 // Max. amount of items
 #define MAX_ITEMS 256
 
+// Max. tries of sending when an interrupt occurs
+#define MAX_TRIES_EINTR 8
+
 #endif
