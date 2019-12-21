@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <inttypes.h>
+#include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,10 +20,29 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+#include "commons.h"
 #include "client.h"
 #include "recvExact.h"
 
 #define STATUS_STRING_SIZE 80
+
+enum ByteUnit {
+        Byte,
+        Kibibyte,
+        Mebibyte,
+        Gibibyte,
+        Tebibyte,
+        Pebibyte,
+        Exbibyte
+};
+
+int recvLevel(int socketID);
+int recvFile(int socketID, uint64_t size, char* name);
+void printStatus(uint64_t* byteProgress, struct timeval* timeProgress, uint64_t size, unsigned char erase);
+enum ByteUnit getUnit(uint64_t size);
+uint64_t convertBytes(uint64_t bytes, enum ByteUnit unit, unsigned int* dec);
+void shiftDec(unsigned int* dec, uint64_t in);
+void getUnitStr(enum ByteUnit unit, char* str);
 
 /**
  * @fn void parseArguments(int argc, char* argv[], ClientArguments* psArguments)
@@ -34,208 +54,420 @@
  * @author Hannes Braun
  * @date 16.06.2019
  */
-int connectAndReceive(ClientConfiguration* psConfiguration)
+int connectAndReceive(struct Config* config)
 {
         // General purpose return value
-        int iReturnValue;
+        int tmp;
+        int retVal = 0;
 
-        unsigned char ucErrorOcurred = 0;
+        int socketID;
 
-        int iSocketID;
-
-        struct sockaddr_in sServerAddress;
+        struct sockaddr_in serverAddr;
 
         // Information to receive
-        uint16_t ui16FileNameLength;
-        uint64_t ui64FileSize;
+        unsigned char headerByte;
 
-        // File name
-        char* pcFileName;
-
-        // Status printing
-        char acStatusString[STATUS_STRING_SIZE] = {0};
-        short int siPreviousStrLen;
-        uint64_t ui64PreviousBytesLeft;
-        struct timeval lastStatusPrint;
-        struct timeval currentTime;
-        unsigned long int uliTimeDiff;
-        unsigned int uiDownloadSpeed;
-
-        // Data buffer
-        char acDataBuffer[RECVBUFFERSIZE];
-        unsigned int uiCurrentBufferSize;
-
-        // File descriptor
-        int iFileDescriptor;
-
-        int64_t i64BytesReceived;
-        uint64_t ui64BytesLeft;
-
-        iSocketID = socket(AF_INET, SOCK_STREAM, 0);
+        socketID = socket(AF_INET, SOCK_STREAM, 0);
 
         // Setting properties for lobby address
-        sServerAddress.sin_family = AF_INET;
-        sServerAddress.sin_port = htons(psConfiguration->siPort);
-        sServerAddress.sin_addr = psConfiguration->sIPAddress;
+        serverAddr.sin_family = AF_INET;
+        serverAddr.sin_port = htons(config->port);
+        serverAddr.sin_addr = config->addr;
 
         // Connecting
-        printf("Connecting to %s... ", inet_ntoa(sServerAddress.sin_addr));
-        iReturnValue = connect(iSocketID, (struct sockaddr*) &sServerAddress, sizeof(sServerAddress));
-        if (iReturnValue == -1) {
+        printf("Connecting to %s... ", inet_ntoa(serverAddr.sin_addr));
+        tmp = connect(socketID, (struct sockaddr*) &serverAddr, sizeof(serverAddr));
+        if (tmp == -1) {
                 printf("failed\n");
                 perror("An error ocurred while connecting to the client");
-                ucErrorOcurred = 1;
-                goto errorDuringSetup1;
-        } else
+                retVal = -1;
+                goto error;
+        } else {
                 printf("done\n");
-
-        // Getting file name length
-        iReturnValue = recvExact(iSocketID, &ui16FileNameLength, sizeof(ui16FileNameLength), 0);
-        if (iReturnValue == -1) {
-                perror("An error ocurred while receiving the length of the file name");
-                ucErrorOcurred = 1;
-                goto errorDuringSetup2;
         }
 
-        // Allocating memory for file name
-        pcFileName = (char*) malloc(ui16FileNameLength * sizeof(char));
-        if (pcFileName == NULL) {
-                perror("An error ocurred while allocating memory for the file name");
-                ucErrorOcurred = 1;
-                goto errorDuringSetup2;
+        // Getting header byte
+        tmp = recvExact(socketID, &headerByte, 1u, 0);
+        if (tmp == -1) {
+                perror("An error ocurred while receiving the header byte");
+                retVal = -1;
+                goto error;
         }
 
-        // Getting file name
-        iReturnValue = recvExact(iSocketID, pcFileName, ui16FileNameLength * sizeof(char), 0);
-        if (iReturnValue == -1) {
-                perror("An error ocurred while receiving the file name");
-                ucErrorOcurred = 1;
-                goto errorDuringSetup3;
+        if (headerByte != 1) {
+                fprintf(stderr, "The server is not compliant with the protocol version implemented in this client.\n");
+                retVal = -1;
+                goto error;
         }
 
-        // Getting file size
-        iReturnValue = recvExact(iSocketID, &ui64FileSize, sizeof(ui64FileSize), 0);
-        if (iReturnValue == -1) {
-                perror("An error ocurred while receiving the file size");
-                ucErrorOcurred = 1;
-                goto errorDuringSetup3;
+        tmp = recvLevel(socketID);
+        if (tmp == -1) {
+                retVal = -1;
+                goto error;
         }
-        ui64BytesLeft = ui64FileSize;
-        ui64PreviousBytesLeft = ui64FileSize;
+
+
+error:
+        // Closing the socket
+        tmp = close(socketID);
+        if (tmp == -1) {
+                perror("An error ocurred while closing the socket");
+        }
+
+        return retVal;
+}
+
+int recvLevel(int socketID)
+{
+        int tmp;
+        int retVal = 0;
+
+        // Item header
+        union ItemHeader header;
+
+        // File name
+        char name[4096] = {0};
+
+        // File size
+        uint64_t size;
+
+        do {
+                // Getting item header
+                tmp = recvExact(socketID, &(header.byte), 1, 0);
+                if (tmp == -1) {
+                        perror("An error ocurred while receiving an item header");
+                        retVal = -1;
+                        goto error;
+                }
+
+                // Getting name
+                tmp = recvExact(socketID, name, (header.item.nameLen + 1) * 128, 0);
+                if (tmp == -1) {
+                        perror("An error ocurred while receiving the file name");
+                        retVal = -1;
+                        goto error;
+                }
+                // Safety first, ensure the null byte at the end of the name and at max name length position
+                name[4095] = 0;
+                if (NAME_MAX < 4096) {
+                        name[NAME_MAX] = 0;
+                }
+
+                if (header.item.type == TYPE_FOLDER) {
+                        // Directory
+
+                        // Create
+                        tmp = mkdir(name, 0750);
+                        if (tmp == -1) {
+                                perror("An error ocurred while creating the directory");
+                                retVal = -1;
+                                goto error;
+                        }
+
+                        if (header.item.emptyFolder == 0) {
+                                // Receive directory content
+                                tmp = chdir(name);
+                                if (tmp == -1) {
+                                        perror("An error ocurred while changing the directory");
+                                        retVal = -1;
+                                        goto error;
+                                }
+
+                                tmp = recvLevel(socketID);
+                                if (tmp == -1) {
+                                        retVal = -1;
+                                        goto error;
+                                }
+
+                                tmp = chdir("..");
+                                if (tmp == -1) {
+                                        perror("An error ocurred while changing the directory");
+                                        retVal = -1;
+                                        goto error;
+                                }
+                        }
+                } else {
+                        // File
+
+                        // Getting file size
+                        tmp = recvExact(socketID, &size, sizeof(size), 0);
+                        if (tmp == -1) {
+                                perror("An error ocurred while receiving a file size");
+                                retVal = -1;
+                                goto error;
+                        }
+
+                        tmp = recvFile(socketID, size, name);
+                        if (tmp == -1) {
+                                retVal = -1;
+                                goto error;
+                        }
+                }
+
+        } while (header.item.lastItem == 0);
+
+error:
+        return retVal;
+}
+
+int recvFile(int socketID, uint64_t size, char* name)
+{
+        int tmp;
+        int retVal = 0;
+
+        uint64_t bytesLeft = size;
+        int bytesRecv;
+
+        int fd;
+        unsigned char buf[RECVBUFFERSIZE];
+        unsigned int bufSize;
+
+        uint64_t byteProgress[21] = {0};
+        struct timeval timeProgress[21];
+        struct timeval timeCurrent;
+        uint64_t timeDiff;
+        int i;
 
         // Opening the file
-        if (psConfiguration->pcOutputFileName == NULL)
-                iFileDescriptor = open(pcFileName, O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
-        else {
-                // Override sent file name
-                iFileDescriptor = open(psConfiguration->pcOutputFileName, O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
-        }
-        if (iFileDescriptor == -1) {
+        fd = open(name, O_WRONLY | O_CREAT | O_EXCL, 0640);
+        if (fd == -1) {
                 perror("An error ocurred while opening the new file");
-                ucErrorOcurred = 1;
-                goto errorDuringSetup3;
+                return -1;
+        }
+
+        tmp = gettimeofday(&(timeProgress[20]), NULL);
+        if (tmp == -1) {
+                perror("An error ocurred while getting the time of the day");
+                retVal = -1;
+                goto error;
         }
 
         // Receiving the file
-        printf("Receiving file %s...\n", pcFileName);
-        siPreviousStrLen = 0;
-        gettimeofday(&lastStatusPrint, NULL);
-        while (ui64BytesLeft > 0) {
-                if (ui64BytesLeft > RECVBUFFERSIZE)
-                        uiCurrentBufferSize = RECVBUFFERSIZE;
-                else
-                        uiCurrentBufferSize = ui64BytesLeft;
-
-                i64BytesReceived = recv(iSocketID, acDataBuffer, uiCurrentBufferSize, 0);
-                if (i64BytesReceived == -1) {
+        printf("Receiving file %s...\n", name);
+        while (bytesLeft > 0) {
+                if (bytesLeft > RECVBUFFERSIZE) {
+                        bufSize = RECVBUFFERSIZE;
+                } else {
+                        bufSize = bytesLeft;
+                }
+                bytesRecv = recv(socketID, buf, bufSize, 0);
+                if (bytesRecv == -1) {
                         perror("An error ocurred while receiving the file");
-                        ucErrorOcurred = 1;
-                        goto errorDuringReceive;
+                        retVal = -1;
+                        goto error;
                 }
 
                 // Write to file
-                iReturnValue = write(iFileDescriptor, acDataBuffer, i64BytesReceived);
-                if (iReturnValue == -1) {
+                tmp = write(fd, buf, bytesRecv);
+                if (tmp == -1) {
                         perror("An error ocurred while writing the received data to the file");
-                        ucErrorOcurred = 1;
-                        goto errorDuringReceive;
+                        retVal = -1;
+                        goto error;
                 }
 
                 // Update bytes left
-                ui64BytesLeft = ui64BytesLeft - i64BytesReceived;
+                bytesLeft = bytesLeft - bytesRecv;
 
                 // Update current time
-                iReturnValue = gettimeofday(&currentTime, NULL);
-                if (iReturnValue == -1) {
+                tmp = gettimeofday(&timeCurrent, NULL);
+                if (tmp == -1) {
                         perror("An error ocurred while getting the time of the day");
-                        ucErrorOcurred = 1;
-                        goto errorDuringReceive;
+                        retVal = -1;
+                        goto error;
                 }
-                uliTimeDiff = (currentTime.tv_sec * 1000000 + currentTime.tv_usec) - (lastStatusPrint.tv_sec * 1000000 + lastStatusPrint.tv_usec);
+                timeDiff = (timeCurrent.tv_sec * 1000000 + timeCurrent.tv_usec) - (timeProgress[20].tv_sec * 1000000 + timeProgress[20].tv_usec);
 
-                // Update status 4 times per second
-                if (uliTimeDiff > 250000) {
-                        siPreviousStrLen = strlen(acStatusString);
-                        uiDownloadSpeed = (unsigned int)(((ui64PreviousBytesLeft - ui64BytesLeft) / ((double) uliTimeDiff)) * 1000000);
-                        snprintf(acStatusString, STATUS_STRING_SIZE, "Received %" PRIu64 " of %" PRIu64 " bytes | %d bytes/sec | ETA %" PRIu64 "m %" PRIu64 "s",
-                                 (ui64FileSize - ui64BytesLeft),
-                                 ui64FileSize,
-                                 uiDownloadSpeed,
-                                 (ui64BytesLeft / uiDownloadSpeed) / 60,
-                                 (ui64BytesLeft / uiDownloadSpeed) % 60);
-                        printStatus(acStatusString, siPreviousStrLen);
+                // Update status every 50 ms
+                if (timeDiff > 50000) {
+                        for (i = 0; i < 20; i++) {
+                                byteProgress[i] = byteProgress[i + 1];
+                                timeProgress[i] = timeProgress[i + 1];
+                        }
 
-                        ui64PreviousBytesLeft = ui64BytesLeft;
-                        lastStatusPrint = currentTime;
+                        byteProgress[20] = size - bytesLeft;
+                        timeProgress[20] = timeCurrent;
+
+                        printStatus(byteProgress, timeProgress, size, 0);
                 }
         }
 
-        printf("\nFinished receiving file.\nClosing...\n");
+        printStatus(byteProgress, timeProgress, size, 1);
 
-errorDuringReceive:
-
+error:
         // Closing file
-        iReturnValue = close(iFileDescriptor);
-        if (iReturnValue == -1)
+        tmp = close(fd);
+        if (tmp == -1) {
                 perror("An error ocurred while closing the file");
+                retVal = -1;
+        }
 
-errorDuringSetup3:
-
-        free(pcFileName);
-
-errorDuringSetup2:
-
-        // Closing the socket
-        iReturnValue = close(iSocketID);
-        if (iReturnValue == -1)
-                perror("An error ocurred while closing the socket");
-
-errorDuringSetup1:
-
-        if (ucErrorOcurred == 1)
-                return 1;
-        else
-                return 0;
+        return retVal;
 }
 
-void printStatus(char* const pcStatusString, short int siPreviousStrLen)
+void printStatus(uint64_t* byteProgress, struct timeval* timeProgress, uint64_t size, unsigned char erase)
 {
-        int iCounter;
-        int iBackwards = 0;
+        int i;
+        enum ByteUnit unitSize;
+        enum ByteUnit unitSpeed;
+        uint64_t transferred;
+        uint64_t timeDiff;
+        uint64_t speed;
+        unsigned int dec;
+        unsigned int min;
+        unsigned int sec;
+        uint64_t bytesLeft = size - byteProgress[20];
+        char out[1024];
+        char unitSizeStr[4];
+        char unitSpeedStr[4];
 
-        // Move cursor backwards
-        for (iCounter = 0; iCounter < siPreviousStrLen; iCounter++)
-                putchar('\b');
+        // Get file size unit
+        unitSize = getUnit(size);
+        getUnitStr(unitSize, unitSizeStr);
 
-        // Erase
-        printf("%s", pcStatusString);
-        fflush(stdout);
-        for (iCounter = strlen(pcStatusString); iCounter < siPreviousStrLen; iCounter++) {
-                putchar(' ');
-                iBackwards++;
+        // Calculate bytes transfered and time difference
+        transferred = byteProgress[20] - byteProgress[0];
+        timeDiff = (timeProgress[20].tv_sec * 1000000 + timeProgress[20].tv_usec) - (timeProgress[0].tv_sec * 1000000 + timeProgress[0].tv_usec);
+
+        // Calculate speed in bytes per second and eta
+        speed = (transferred * 1000000) / timeDiff;
+        if (speed > 0) {
+                min = (bytesLeft / speed) / 60;
+                sec = (bytesLeft / speed) % 60;
+        } else {
+                // Avoid division by zero
+                min = UINT_MAX;
+                sec = UINT_MAX;
         }
 
-        // Go back to real string end
-        for (iCounter = 0; iCounter < iBackwards; iCounter++)
-                putchar('\b');
+        // Get speed unit
+        unitSpeed = getUnit(transferred);
+        transferred = convertBytes(transferred, unitSpeed, &dec);
+        getUnitStr(unitSpeed, unitSpeedStr);
+
+        // Write new status
+        snprintf(out, 1024, "%" PRIu64 " %s / %" PRIu64 " %s | %" PRIu64 ",%llu %s/s | ETA: %dm %ds   ",
+                 convertBytes(byteProgress[20], unitSize, &dec),
+                 unitSizeStr,
+                 convertBytes(size, unitSize, &dec),
+                 unitSizeStr,
+                 (transferred * 1000000) / timeDiff,
+                 (dec * 1000000) / timeDiff,
+                 unitSpeedStr,
+                 min,
+                 sec);
+
+        // Move cursor backwards
+        printf("\x1b[1024D");
+        if (erase == 0) {
+                // Update status
+                printf("%s", out);
+        } else if (erase == 1) {
+                // Erase status
+                for (i = 0; i < strlen(out); i++) {
+                        putchar(' ');
+                }
+                printf("\x1b[1024D");
+        }
+
+        fflush(stdout);
+}
+
+enum ByteUnit getUnit(uint64_t size)
+{
+        if (size < 1000) {
+                return Byte;
+        } else if (size < 1000000) {
+                return Kibibyte;
+        } else if (size < 1000000000) {
+                return Mebibyte;
+        } else if (size < 1000000000000) {
+                return Gibibyte;
+        } else if (size < 1000000000000000) {
+                return Tebibyte;
+        } else if (size < 1000000000000000000) {
+                return Pebibyte;
+        } else {
+                return Exbibyte;
+        }
+}
+
+uint64_t convertBytes(uint64_t bytes, enum ByteUnit unit, unsigned int* dec)
+{
+        uint64_t retVal = 0;
+        uint64_t tmpDec;
+
+        switch (unit) {
+                case Byte:
+                        retVal = bytes;
+                        (*dec) = 0;
+                        break;
+                case Kibibyte:
+                        retVal = bytes >> 10;
+                        tmpDec = bytes - (retVal << 10);
+                        shiftDec(dec, tmpDec);
+                        break;
+                case Mebibyte:
+                        retVal = bytes >> 20;
+                        tmpDec = bytes - (retVal << 20);
+                        shiftDec(dec, tmpDec);
+                        break;
+                case Gibibyte:
+                        retVal = bytes >> 30;
+                        tmpDec = bytes - (retVal << 30);
+                        shiftDec(dec, tmpDec);
+                        break;
+                case Tebibyte:
+                        retVal = bytes >> 40;
+                        tmpDec = bytes - (retVal << 40);
+                        shiftDec(dec, tmpDec);
+                        break;
+                case Pebibyte:
+                        retVal = bytes >> 50;
+                        tmpDec = bytes - (retVal << 50);
+                        shiftDec(dec, tmpDec);
+                        break;
+                case Exbibyte:
+                        retVal = bytes >> 60;
+                        tmpDec = bytes - (retVal << 60);
+                        shiftDec(dec, tmpDec);
+                        break;
+        }
+
+        return retVal;
+}
+
+void shiftDec(unsigned int* dec, uint64_t in)
+{
+        while (in >= 100) {
+                in = in / 10;
+        }
+
+        (*dec) = in;
+}
+
+void getUnitStr(enum ByteUnit unit, char* str)
+{
+        switch (unit) {
+                case Byte:
+                        strncpy(str, "B", 2);
+                        break;
+                case Kibibyte:
+                        strncpy(str, "KiB", 4);
+                        break;
+                case Mebibyte:
+                        strncpy(str, "MiB", 4);
+                        break;
+                case Gibibyte:
+                        strncpy(str, "GiB", 4);
+                        break;
+                case Tebibyte:
+                        strncpy(str, "TiB", 4);
+                        break;
+                case Pebibyte:
+                        strncpy(str, "PiB", 4);
+                        break;
+                case Exbibyte:
+                        strncpy(str, "EiB", 4);
+                        break;
+        }
 }

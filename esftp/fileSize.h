@@ -3,6 +3,6 @@
 
 #include <stdint.h>
 
-int64_t calculateFileSize(char* path);
+int calculateFileSize(char* path, uint64_t* size);
 
 #endif

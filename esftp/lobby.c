@@ -113,7 +113,7 @@ int lobby(struct LobbyConfig* config)
         }
 
         if (serverShutdownState == friendlyShutdown) {
-                printf("Initiating friendly shutdown...\n");
+                printf("\x1b[2DInitiating friendly shutdown...\n");
         }
 
 errorSocketListen:
@@ -268,7 +268,7 @@ int checkItemAvaliability(struct LobbyConfig* config)
                 if (access(config->items[currentItem], R_OK) == -1) {
                         // Item doesn't exist or is not readable... it's an error
                         retVal = -1;
-                        fprintf(stderr, "Error while trying to access %s: %s", config->items[currentItem], strerror(errno));
+                        fprintf(stderr, "Error while trying to access %s: %s\n", config->items[currentItem], strerror(errno));
                 }
         }
 

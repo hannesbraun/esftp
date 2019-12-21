@@ -10,23 +10,16 @@
 
 #include <arpa/inet.h>
 
-#define FALSE 0
-#define TRUE 1
-
 #define RECVBUFFERSIZE 4096
 
-typedef struct ClientConfiguration_t {
-        struct in_addr sIPAddress;
-        char* pcOutputFileName;
-        short int siPort;
-        unsigned char ucVersionFlag: 1;
-        unsigned char ucArgumentsValid: 1;
-} ClientConfiguration;
+struct Config {
+        struct in_addr addr;
+        short int port;
+        unsigned char printVersion: 1;
+};
 
-void parseAndConfigure(int argc, char* argv[], ClientConfiguration* psConfiguration);
+int parseAndConfigure(int argc, char* argv[], struct Config* config);
 
-int connectAndReceive(ClientConfiguration* psConfiguration);
-
-void printStatus(char* const pcStatusString, short int siPreviousStrLen);
+int connectAndReceive(struct Config* config);
 
 #endif

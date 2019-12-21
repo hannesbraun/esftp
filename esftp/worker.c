@@ -178,22 +178,27 @@ int isFolderEmpty(char* path)
 int sendItemViaTCP(int socketID, union ItemHeader* header, char* path)
 {
         int retVal;
-        char* pathCpy;
+        char pathCpy[4096] = {0};
         char* base;
-        int64_t size;
+        uint64_t size;
         int fd;
+        int tmp;
         unsigned char buf[BUFFERSIZE];
         // Read bytes at last read operation
         int readBytes;
-
-        pathCpy = (char*) malloc((strlen(path) + 1) * sizeof(char));
-        if (pathCpy == NULL) {
-                fprintf(stderr, "An error ocurred while allocating memory for the copy of the path string");
-                return -1;
-        }
+        unsigned int nameLen;
 
         strncpy(pathCpy, path, strlen(path) + 1);
         base = basename(pathCpy);
+
+        // Calculate filename length
+        nameLen = (strlen(base)) / 128;
+        if (nameLen > 31) {
+                (*header).item.nameLen = 31;
+                pathCpy[4095] = 0;
+        } else {
+                (*header).item.nameLen = nameLen;
+        }
 
         // Header
         retVal = sendMultiple(socketID, &(*header).byte, 1, 0, MAX_TRIES_EINTR);
@@ -204,7 +209,7 @@ int sendItemViaTCP(int socketID, union ItemHeader* header, char* path)
         }
 
         // Item name
-        retVal = sendMultiple(socketID, base, strlen(base) + 1, 0, MAX_TRIES_EINTR);
+        retVal = sendMultiple(socketID, base, ((*header).item.nameLen + 1) * 128, 0, MAX_TRIES_EINTR);
         if (retVal == -1) {
                 perror("An error ocurred while sending the item name");
                 // retVal = -1;
@@ -214,9 +219,9 @@ int sendItemViaTCP(int socketID, union ItemHeader* header, char* path)
         if ((*header).item.type == TYPE_FILE) {
                 // File size
 
-                size = calculateFileSize(path);
-                if (size == -1) {
-                        retVal = -1;
+                retVal = calculateFileSize(path, &size);
+                if (retVal == -1) {
+                        // retVal = -1;
                         goto error;
                 }
 
@@ -230,7 +235,7 @@ int sendItemViaTCP(int socketID, union ItemHeader* header, char* path)
                 // Open file
                 fd = open(path, O_RDONLY);
                 if (fd == -1) {
-                        fprintf(stderr, "An error ocurred while opening the file %s: %s", path, strerror(errno));
+                        fprintf(stderr, "An error ocurred while opening the file %s: %s\n", path, strerror(errno));
                         retVal = -1;
                         goto error;
                 }
@@ -240,7 +245,7 @@ int sendItemViaTCP(int socketID, union ItemHeader* header, char* path)
                         // Reading
                         readBytes = readMultiple(fd, buf, BUFFERSIZE, MAX_TRIES_EINTR);
                         if (readBytes == -1) {
-                                fprintf(stderr, "An error ocurred while reading the file %s: %s", path, strerror(errno));
+                                fprintf(stderr, "An error ocurred while reading the file %s: %s\n", path, strerror(errno));
                                 retVal = -1;
                                 goto errorAfterOpen;
                         }
@@ -250,7 +255,7 @@ int sendItemViaTCP(int socketID, union ItemHeader* header, char* path)
                                 // Sending File
                                 retVal = sendMultiple(socketID, buf, readBytes, 0, MAX_TRIES_EINTR);
                                 if (retVal == -1) {
-                                        fprintf(stderr, "An error ocurred while sending the file %s: %s", path, strerror(errno));
+                                        fprintf(stderr, "An error ocurred while sending the file %s: %s\n", path, strerror(errno));
                                         retVal = -1;
                                         goto errorAfterOpen;
                                 }
@@ -260,16 +265,14 @@ int sendItemViaTCP(int socketID, union ItemHeader* header, char* path)
 
 errorAfterOpen:
                 // Close file
-                retVal = close(fd);
-                if (retVal == -1) {
+                tmp = close(fd);
+                if (tmp == -1) {
                         perror("An error ocurred while closing the file");
                 }
         }
 
 
 error:
-        free(pathCpy);
-
         return retVal;
 
 }
@@ -285,6 +288,7 @@ int sendInner(int socketID, char* path)
         int retVal;
         char* pathCurr;
         char* tmpPtr;
+        int tmp;
 
         dir = opendir(path);
         if (dir == NULL) {
@@ -384,9 +388,10 @@ error:
         free(pathCurr);
 
 errorBeforeMalloc:
-        retVal = closedir(dir);
-        if (retVal == -1) {
+        tmp = closedir(dir);
+        if (tmp == -1) {
                 fprintf(stderr, "An error ocurred while closing the directory %s: %s\n", path, strerror(errno));
+                retVal = -1;
         }
 
         return retVal;

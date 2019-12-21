@@ -13,7 +13,7 @@ union ItemHeader {
                 unsigned char type: 1;
                 unsigned char lastItem: 1;
                 unsigned char emptyFolder: 1;
-                unsigned char unusedBits: 5;
+                unsigned char nameLen: 5;
         } item;
         unsigned char byte;
 };

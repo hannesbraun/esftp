@@ -24,22 +24,30 @@
  */
 int main(int argc, char* argv[])
 {
-        int iApplicationReturn = EXIT_SUCCESS;
+        int retVal = EXIT_SUCCESS;
+        int tmp;
 
-        ClientConfiguration sConfiguration;
+        struct Config config;
 
-        parseAndConfigure(argc, argv, &sConfiguration);
+        tmp = parseAndConfigure(argc, argv, &config);
 
-        if (sConfiguration.ucVersionFlag == 1) {
-                printVersion(client);
-        } else if (sConfiguration.ucArgumentsValid == TRUE) {
-                // Only start client if arguments are valid
-                iApplicationReturn = connectAndReceive(&sConfiguration);
-        } else {
-                iApplicationReturn = EXIT_FAILURE;
+        if (tmp == -1) {
+                retVal = EXIT_FAILURE;
+                goto error;
         }
 
-        return iApplicationReturn;
+        if (config.printVersion == 1) {
+                printVersion(client);
+        } else {
+                tmp = connectAndReceive(&config);
+                if (tmp == -1) {
+                        retVal = EXIT_FAILURE;
+                }
+        }
+
+error:
+
+        return retVal;
 }
 
 /**
@@ -52,48 +60,43 @@ int main(int argc, char* argv[])
  * @author Hannes Braun
  * @date 09.07.2019
  */
-void parseAndConfigure(int argc, char* argv[], ClientConfiguration* psConfiguration)
+int parseAndConfigure(int argc, char* argv[], struct Config* config)
 {
-        psConfiguration->ucArgumentsValid = TRUE;
-        psConfiguration->pcOutputFileName = NULL;
-        psConfiguration->ucVersionFlag = 0;
-        psConfiguration->siPort = ESFTP_PORT;
+        int retVal = 0;
+        int tmp;
 
-        int iOptCode;
-        int iOptionIndex;
-        struct option asLongOptions[] = {
+        config->printVersion = 0;
+        config->port = ESFTP_PORT;
+
+        int optCode;
+        int optionIndex;
+        struct option longOptions[] = {
                 {"version", no_argument, NULL, 1},
                 {"port", required_argument, NULL, 'p'},
-                {"output", required_argument, NULL, 'o'},
                 {NULL, 0, NULL, 0}
         };
 
         while (1) {
 
-                iOptCode = getopt_long(argc, argv, "o:p:", asLongOptions, &iOptionIndex);
+                optCode = getopt_long(argc, argv, "o:p:", longOptions, &optionIndex);
 
-                if (iOptCode == -1) {
+                if (optCode == -1) {
                         // No more options found
                         break;
                 }
 
-                switch (iOptCode) {
+                switch (optCode) {
                         case 1:
                                 // Version
-                                psConfiguration->ucVersionFlag = 1;
-                                break;
-
-                        case 'o':
-                                // Output
-                                psConfiguration->pcOutputFileName = optarg;
+                                config->printVersion = 1;
                                 break;
 
                         case 'p':
                                 // Port
-                                psConfiguration->siPort = atoi(optarg) % 65536;
-                                if (psConfiguration->siPort <= 0) {
+                                config->port = atoi(optarg) % 65536;
+                                if (config->port <= 0) {
                                         // Invalid input
-                                        psConfiguration->ucArgumentsValid = FALSE;
+                                        retVal = -1;
                                         fprintf(stderr, "The given port number is not valid.\n");
                                 }
                                 break;
@@ -107,15 +110,17 @@ void parseAndConfigure(int argc, char* argv[], ClientConfiguration* psConfigurat
 
         if (optind < argc) {
                 // Parse ip address
-                psConfiguration->sIPAddress.s_addr = inet_addr(argv[optind]);
-                if ((int) psConfiguration->sIPAddress.s_addr == -1) {
-                        fprintf(stderr, "The given ip address doesn't seem to be valid.\n");
-                        psConfiguration->ucArgumentsValid = FALSE;
+                tmp = inet_aton(argv[optind], &(config->addr));
+                if (tmp == 0) {
+                        fprintf(stderr, "The given ip address is not valid.\n");
+                        retVal = -1;
                 }
-        } else if (psConfiguration->ucVersionFlag == 0) {
+        } else if (config->printVersion == 0) {
                 // Not enough arguments
-                psConfiguration->ucArgumentsValid = FALSE;
+                retVal = -1;
                 fprintf(stderr, "Not enough arguments given.\n");
                 fprintf(stderr, "Usage: %s <options> <ip address>\n", argv[0]);
         }
+
+        return retVal;
 }

@@ -8,6 +8,6 @@
 #ifndef recvExact_h
 #define recvExact_h
 
-int recvExact(int iSocketID, void* pvBuffer, int iBuflen, int iFlags);
+int recvExact(int socketID, void* buf, int bufLen, int flags);
 
 #endif
