@@ -46,22 +46,22 @@ void* worker(void* vConfig)
         unsigned char headerByte = 1;
 
         // General purpose return value
-        int retVal;
+        int tmp;
 
         unsigned long int i;
 
         union ItemHeader itemHeader;
 
         // Send the header byte
-        retVal = sendMultiple(config->socketID, &headerByte, 1, 0, MAX_TRIES_EINTR);
-        if (retVal == -1) {
+        tmp = sendMultiple(config->socketID, &headerByte, 1, 0, MAX_TRIES_EINTR);
+        if (tmp == -1) {
                 perror("An error ocurred while sending the header byte");
                 goto error;
         }
 
         for (i = 0; i < config->itemsLen; i++) {
-                retVal = getItemHeader(config->items[i], &itemHeader);
-                if (retVal == -1) {
+                tmp = getItemHeader(config->items[i], &itemHeader);
+                if (tmp == -1) {
                         goto error;
                 }
 
@@ -70,14 +70,14 @@ void* worker(void* vConfig)
                 }
 
                 // Send
-                retVal = sendItemViaTCP(config->socketID, &itemHeader, config->items[i]);
-                if (retVal == -1) {
+                tmp = sendItemViaTCP(config->socketID, &itemHeader, config->items[i]);
+                if (tmp == -1) {
                         goto error;
                 }
 
                 if (itemHeader.item.type == TYPE_FOLDER && itemHeader.item.emptyFolder == 0) {
-                        retVal = sendInner(config->socketID, config->items[i]);
-                        if (retVal == -1) {
+                        tmp = sendInner(config->socketID, config->items[i]);
+                        if (tmp == -1) {
                                 goto error;
                         }
                 }
@@ -85,8 +85,8 @@ void* worker(void* vConfig)
 
 error:
         // Close socket
-        retVal = close(config->socketID);
-        if (retVal == -1) {
+        tmp = close(config->socketID);
+        if (tmp == -1) {
                 perror("An error ocurred while closing the worker socket");
         }
 
@@ -97,13 +97,13 @@ error:
 int getItemHeader(char* path, union ItemHeader* header)
 {
         struct stat result;
-        int retVal;
+        int tmp;
         int empty;
 
         (*header).byte = 0;
 
-        retVal = stat(path, &result);
-        if (retVal == -1) {
+        tmp = stat(path, &result);
+        if (tmp == -1) {
                 perror("An error occurred while getting the filestats");
                 return -1;
         }
@@ -132,7 +132,7 @@ int isFolderEmpty(char* path)
 {
         int i = 0;
         struct dirent* entry;
-        int retVal;
+        int tmp;
 
         DIR* dir = opendir(path);
         if (dir == NULL) {
@@ -157,8 +157,8 @@ int isFolderEmpty(char* path)
                 return -1;
         }
 
-        retVal = closedir(dir);
-        if (retVal == -1) {
+        tmp = closedir(dir);
+        if (tmp == -1) {
                 perror("An error ocurred while closing the directory after the empty-check");
                 return -1;
         }
@@ -177,12 +177,12 @@ int isFolderEmpty(char* path)
  */
 int sendItemViaTCP(int socketID, union ItemHeader* header, char* path)
 {
-        int retVal;
+        int retVal = 0;
+        int tmp;
         char pathCpy[4096] = {0};
         char* base;
         uint64_t size;
         int fd;
-        int tmp;
         unsigned char buf[BUFFERSIZE];
         // Read bytes at last read operation
         int readBytes;
@@ -201,32 +201,32 @@ int sendItemViaTCP(int socketID, union ItemHeader* header, char* path)
         }
 
         // Header
-        retVal = sendMultiple(socketID, &(*header).byte, 1, 0, MAX_TRIES_EINTR);
-        if (retVal == -1) {
+        tmp = sendMultiple(socketID, &(*header).byte, 1, 0, MAX_TRIES_EINTR);
+        if (tmp == -1) {
                 perror("An error ocurred while sending the item header byte");
-                // retVal = -1;
+                retVal = -1;
                 goto error;
         }
 
         // Item name
-        retVal = sendMultiple(socketID, base, ((*header).item.nameLen + 1) * 128, 0, MAX_TRIES_EINTR);
-        if (retVal == -1) {
+        tmp = sendMultiple(socketID, base, ((*header).item.nameLen + 1) * 128, 0, MAX_TRIES_EINTR);
+        if (tmp == -1) {
                 perror("An error ocurred while sending the item name");
-                // retVal = -1;
+                retVal = -1;
                 goto error;
         }
 
         if ((*header).item.type == TYPE_FILE) {
                 // File size
 
-                retVal = calculateFileSize(path, &size);
-                if (retVal == -1) {
-                        // retVal = -1;
+                tmp = calculateFileSize(path, &size);
+                if (tmp == -1) {
+                        retVal = -1;
                         goto error;
                 }
 
-                retVal = sendMultiple(socketID, &size, sizeof(size), 0, MAX_TRIES_EINTR);
-                if (retVal == -1) {
+                tmp = sendMultiple(socketID, &size, sizeof(size), 0, MAX_TRIES_EINTR);
+                if (tmp == -1) {
                         perror("An error ocurred while sending the file size");
                         retVal = -1;
                         goto error;
@@ -253,24 +253,23 @@ int sendItemViaTCP(int socketID, union ItemHeader* header, char* path)
 
                         if (readBytes > 0) {
                                 // Sending File
-                                retVal = sendMultiple(socketID, buf, readBytes, 0, MAX_TRIES_EINTR);
-                                if (retVal == -1) {
+                                tmp = sendMultiple(socketID, buf, readBytes, 0, MAX_TRIES_EINTR);
+                                if (tmp == -1) {
                                         fprintf(stderr, "An error ocurred while sending the file %s: %s\n", path, strerror(errno));
                                         retVal = -1;
                                         goto errorAfterOpen;
                                 }
                         }
                 } while (readBytes > 0 && (serverShutdownState == noShutdown || serverShutdownState == friendlyShutdown));
-                retVal = 0;
 
 errorAfterOpen:
                 // Close file
                 tmp = close(fd);
                 if (tmp == -1) {
                         perror("An error ocurred while closing the file");
+                        retVal = -1;
                 }
         }
-
 
 error:
         return retVal;
@@ -285,7 +284,7 @@ int sendInner(int socketID, char* path)
         union ItemHeader header;
         DIR* dir;
         struct dirent* entry;
-        int retVal;
+        int retVal = 0;
         char* pathCurr;
         char* tmpPtr;
         int tmp;
@@ -349,9 +348,9 @@ int sendInner(int socketID, char* path)
                         goto error;
                 }
 
-                retVal = getItemHeader(pathCurr, &header);
-                if (retVal == -1) {
-                        // retVal = -1;
+                tmp = getItemHeader(pathCurr, &header);
+                if (tmp == -1) {
+                        retVal = -1;
                         goto error;
                 }
 
@@ -361,16 +360,16 @@ int sendInner(int socketID, char* path)
                         header.item.lastItem = 0;
                 }
 
-                retVal = sendItemViaTCP(socketID, &header, pathCurr);
-                if (retVal == -1) {
-                        // retVal = -1;
+                tmp = sendItemViaTCP(socketID, &header, pathCurr);
+                if (tmp == -1) {
+                        retVal = -1;
                         goto error;
                 }
 
                 if (header.item.type == TYPE_FOLDER && header.item.emptyFolder == 0) {
-                        retVal = sendInner(socketID, pathCurr);
-                        if (retVal == -1) {
-                                // retVal = -1;
+                        tmp = sendInner(socketID, pathCurr);
+                        if (tmp == -1) {
+                                retVal = -1;
                                 goto error;
                         }
                 }
@@ -380,9 +379,6 @@ int sendInner(int socketID, char* path)
                 retVal = -1;
                 goto error;
         }
-
-        // Success
-        retVal = 0;
 
 error:
         free(pathCurr);

@@ -13,6 +13,6 @@ enum ShutdownState {
 
 extern volatile enum ShutdownState serverShutdownState;
 
-void sigintHandler(int iSignum);
+void sigintHandler(int signum);
 
 #endif

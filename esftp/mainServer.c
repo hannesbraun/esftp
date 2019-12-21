@@ -19,7 +19,8 @@ int parseAndConfigure(int argc, char* argv[], struct LobbyConfig* config);
 int main(int argc, char* argv[])
 {
         // General purpose return value
-        int retVal;
+        int retVal = EXIT_SUCCESS;
+        int tmp;
 
         struct LobbyConfig config;
         char* items[MAX_ITEMS];
@@ -33,14 +34,12 @@ int main(int argc, char* argv[])
         struct sigaction newSigactionSigint;
         newSigactionSigint.sa_handler = &sigintHandler;
 
-        printf("Starting esftp server...\n");
+        tmp = parseAndConfigure(argc, argv, &config);
 
-        retVal = parseAndConfigure(argc, argv, &config);
-
-        if (retVal == 0) {
+        if (tmp == 0) {
                 // Disable SIGPIPE (no need to terminate the process)
-                retVal = sigaction(SIGPIPE, &newSigactionSigpipe, NULL);
-                if (retVal == -1) {
+                tmp = sigaction(SIGPIPE, &newSigactionSigpipe, NULL);
+                if (tmp == -1) {
                         perror("An error ocurred while disabling SIGPIPE");
                         retVal = EXIT_FAILURE;
                         goto error;
@@ -48,18 +47,16 @@ int main(int argc, char* argv[])
 
                 // Initialize SIGINT handler
                 serverShutdownState = noShutdown;
-                retVal = sigaction(SIGINT, &newSigactionSigint, NULL);
-                if (retVal == -1) {
+                tmp = sigaction(SIGINT, &newSigactionSigint, NULL);
+                if (tmp == -1) {
                         perror("An error ocurred while changing the SIGINT action");
                         retVal = EXIT_FAILURE;
                         goto error;
                 }
 
                 // Execute the lobby
-                retVal = lobby(&config);
-                if (retVal == 0) {
-                        retVal = EXIT_SUCCESS;
-                } else {
+                tmp = lobby(&config);
+                if (tmp != 0) {
                         retVal = EXIT_FAILURE;
                 }
 
@@ -143,7 +140,7 @@ int parseAndConfigure(int argc, char** argv, struct LobbyConfig* config)
         return retVal;
 }
 
-void sigintHandler(int iSignum)
+void sigintHandler(int signum)
 {
         if (serverShutdownState == noShutdown) {
                 serverShutdownState = friendlyShutdown;

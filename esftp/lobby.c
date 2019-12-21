@@ -32,9 +32,8 @@ int lobby(struct LobbyConfig* config)
         struct WorkerList workerList;
 
         // General purpose return value
-        int retVal;
-
-        int lobbyRetVal = 0;
+        int retVal = 0;
+        int tmp;
 
         // The socket ids of the lobby and the last created worker
         int lobbySocketID;
@@ -47,23 +46,25 @@ int lobby(struct LobbyConfig* config)
                 return 0;
         }
 
-        retVal = checkItemAvaliability(config);
-        if (retVal == -1) {
+        printf("Starting esftp server...\n");
+
+        tmp = checkItemAvaliability(config);
+        if (tmp == -1) {
                 // Running the server/accessing the items is probably not going to work
                 return -1;
         }
 
         // Initialize worker list
-        retVal = wlInitialize(&workerList);
-        if (retVal == -1) {
-                lobbyRetVal = -1;
+        tmp = wlInitialize(&workerList);
+        if (tmp == -1) {
+                retVal = -1;
                 goto errorWLInit;
         }
 
         // Create lobby socket
         lobbySocketID = socket(AF_INET, SOCK_STREAM, 0);
         if (lobbySocketID == -1) {
-                lobbyRetVal = -1;
+                retVal = -1;
                 perror("An error ocurred while creating the lobby socket");
                 goto errorSocketBuild;
         }
@@ -74,25 +75,25 @@ int lobby(struct LobbyConfig* config)
         lobbyAddr.sin_addr.s_addr = INADDR_ANY;
 
         // Binding
-        retVal = bind(lobbySocketID, (struct sockaddr*) &lobbyAddr, sizeof(lobbyAddr));
-        if (retVal == -1) {
-                lobbyRetVal = -1;
+        tmp = bind(lobbySocketID, (struct sockaddr*) &lobbyAddr, sizeof(lobbyAddr));
+        if (tmp == -1) {
+                retVal = -1;
                 perror("An error ocurred while binding");
                 goto errorSocketBind;
         }
 
         // Activating listening mode
-        retVal = listen(lobbySocketID, BACKLOGSIZE);
-        if (retVal == -1) {
-                lobbyRetVal = -1;
+        tmp = listen(lobbySocketID, BACKLOGSIZE);
+        if (tmp == -1) {
+                retVal = -1;
                 perror("An error ocurred while setting socket to listening mode");
                 goto errorSocketListen;
         }
 
         // Main loop
         while (serverShutdownState == noShutdown) {
-                retVal = handleRequest(lobbySocketID, &workerList, config);
-                switch (retVal) {
+                tmp = handleRequest(lobbySocketID, &workerList, config);
+                switch (tmp) {
                         case -1:
                         case -2:
                         case -4:
@@ -105,7 +106,7 @@ int lobby(struct LobbyConfig* config)
                         case -7:
                                 // Stop the server
                                 serverShutdownState = forceShutdown;
-                                lobbyRetVal = -1;
+                                retVal = -1;
                                 break;
                         default:
                                 break;
@@ -120,16 +121,16 @@ errorSocketListen:
 errorSocketBind:
 
         // Closing the lobby socket
-        retVal = close(lobbySocketID);
-        if (retVal == -1) {
-                lobbyRetVal = -1;
+        tmp = close(lobbySocketID);
+        if (tmp == -1) {
+                retVal = -1;
                 perror("An error ocurred while closing the lobby socket");
         }
 
         // Wait until all workers are finished (incl. forceShutdown: workers will terminate as soon as possible)
-        retVal = wlJoin(&workerList);
-        if (retVal == -1) {
-                lobbyRetVal = -1;
+        tmp = wlJoin(&workerList);
+        if (tmp == -1) {
+                retVal = -1;
         }
 
 errorSocketBuild:
@@ -138,7 +139,7 @@ errorSocketBuild:
 
 errorWLInit:
 
-        return lobbyRetVal;
+        return retVal;
 }
 
 int handleRequest(int lobbySocketID, struct WorkerList* workerList, struct LobbyConfig* lobbyConfig)

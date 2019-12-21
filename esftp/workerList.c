@@ -32,13 +32,13 @@ int wlInitialize(struct WorkerList* workerList)
 int wlCleanup(struct WorkerList* workerList)
 {
         int i;
-        int retVal;
+        int tmp;
 
         for (i = 0; i < workerList->usedSlots; i++) {
                 if (workerList->tidArray[i]->finished == 1) {
                         // Delete from list
-                        retVal = wlDelete(workerList, i);
-                        if (retVal == -1) {
+                        tmp = wlDelete(workerList, i);
+                        if (tmp == -1) {
                                 // Deleting not successful
                                 return -1;
                         }
@@ -47,8 +47,8 @@ int wlCleanup(struct WorkerList* workerList)
 
         if ((((float) workerList->usedSlots) / ((float) workerList->arraySize)) < 0.5f) {
                 // Resize array
-                retVal = wlResize(workerList, workerList->usedSlots * RESIZE_FACTOR + 1);
-                if (retVal == -1) {
+                tmp = wlResize(workerList, workerList->usedSlots * RESIZE_FACTOR + 1);
+                if (tmp == -1) {
                         // Resizing not successful (should not occur since this is only downsizing)
                         return -1;
                 }
@@ -83,12 +83,12 @@ int wlDelete(struct WorkerList* workerList, int index)
 
 int wlAdd(struct WorkerList* workerList, struct WorkerConfig* workerConfig)
 {
-        int retVal;
+        int tmp;
 
         if (workerList->arraySize <= workerList->usedSlots) {
                 // Resize array
-                retVal = wlResize(workerList, workerList->usedSlots * RESIZE_FACTOR + 1);
-                if (retVal == -1) {
+                tmp = wlResize(workerList, workerList->usedSlots * RESIZE_FACTOR + 1);
+                if (tmp == -1) {
                         // Resizing not successful
                         return -1;
                 }
@@ -126,13 +126,13 @@ int wlResize(struct WorkerList* workerList, unsigned int newArraySize)
 
 int wlJoin(struct WorkerList* workerList)
 {
-        int retVal;
+        int tmp;
 
         while (workerList->usedSlots != 0) {
-                retVal = pthread_join(workerList->tidArray[0]->tid, NULL);
-                if (retVal == 0) {
-                        retVal = wlDelete(workerList, 0);
-                        if (retVal == -1) {
+                tmp = pthread_join(workerList->tidArray[0]->tid, NULL);
+                if (tmp == 0) {
+                        tmp = wlDelete(workerList, 0);
+                        if (tmp == -1) {
                                 return -1;
                         }
                 } else {
@@ -140,8 +140,8 @@ int wlJoin(struct WorkerList* workerList)
                 }
         }
 
-        retVal = wlCleanup(workerList);
-        if (retVal == -1) {
+        tmp = wlCleanup(workerList);
+        if (tmp == -1) {
                 return -1;
         }
 
