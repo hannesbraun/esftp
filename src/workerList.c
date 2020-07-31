@@ -1,10 +1,7 @@
 /**
- * @file workerList.c
- * @brief File contains the worker list's functions.
- * @author Hannes Braun
- * @date 10.08.2019
- *
- * This module is not thread safe.
+ * Worker list
+ * This modules implements a worker list to keep track of the active workers.
+ * Important: this module is not thread safe.
  */
 
 #include <errno.h>
@@ -18,7 +15,7 @@
 
 int wlInitialize(struct WorkerList* workerList)
 {
-        workerList->tidArray = (struct WorkerConfig**) malloc(1 * sizeof(struct WorkerConfig*));
+        workerList->tidArray = (struct WorkerConfig**) malloc(INITIAL_SIZE * sizeof(struct WorkerConfig*));
         if (workerList->tidArray == NULL) {
                 fprintf(stderr, "An error ocurred while allocating memory for the worker list.\n");
                 return -1;
@@ -67,7 +64,7 @@ int wlDelete(struct WorkerList* workerList, int index)
                 return -1;
         }
 
-        // Free space of worker arguments
+        // Free space of worker config
         free(workerList->tidArray[index]);
 
         // Move elements

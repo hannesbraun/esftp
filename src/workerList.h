@@ -4,6 +4,7 @@
 #include "server.h"
 #include "worker.h"
 
+#define INITIAL_SIZE 1
 #define RESIZE_FACTOR 1.42
 
 struct WorkerList {

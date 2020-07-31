@@ -22,7 +22,7 @@ int parseAndConfigure(int argc, char** argv, struct LobbyConfig* config);
  */
 int main(int argc, char** argv)
 {
-        // General purpose return value
+        // General purpose return variable
         int tmp;
 
         // Process return value
@@ -100,6 +100,8 @@ int parseAndConfigure(int argc, char** argv, struct LobbyConfig* config)
 
         int optCode;
         int optionIndex;
+
+        // Available options
         struct option longOptions[] = {
                 {"version", no_argument, NULL, 1},
                 {"port", required_argument, NULL, 'p'},
@@ -107,6 +109,7 @@ int parseAndConfigure(int argc, char** argv, struct LobbyConfig* config)
         };
 
         while (1) {
+                // Parse next option
                 optCode = getopt_long(argc, argv, "p:", longOptions, &optionIndex);
 
                 if (optCode == -1) {
@@ -139,8 +142,8 @@ int parseAndConfigure(int argc, char** argv, struct LobbyConfig* config)
         }
 
         if (optind < argc) {
+                // Store paths/items
                 do {
-                        // Store paths/items
                         config->items[config->itemsLen] = argv[optind];
                         optind++;
                         config->itemsLen++;
