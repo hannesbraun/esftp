@@ -14,30 +14,45 @@
 #include "serverConfig.h"
 #include "lobby.h"
 
-int parseAndConfigure(int argc, char* argv[], struct LobbyConfig* config);
+int parseAndConfigure(int argc, char** argv, struct LobbyConfig* config);
 
-int main(int argc, char* argv[])
+/**
+ * The main function calls a function to parse the command line arguments and executes the lobby afterwards.
+ * It is also responsible to change the handlers for signals.
+ */
+int main(int argc, char** argv)
 {
         // General purpose return value
-        int retVal = EXIT_SUCCESS;
         int tmp;
 
-        struct LobbyConfig config;
+        // Process return value
+        int retVal = EXIT_SUCCESS;
+
+        // Paths to items to send
         char* items[MAX_ITEMS];
+
+        // Server configuration
+        struct LobbyConfig config;
         config.items = items;
 
-        // New sigaction for SIGPIPE
+        // Ignore SIGPIPE (to avoid killing the process if a connection breaks)
         struct sigaction newSigactionSigpipe;
         newSigactionSigpipe.sa_handler = SIG_IGN;
 
-        // New sigaction for SIGINT
+        // Better shutdown handling on SIGINT
         struct sigaction newSigactionSigint;
         newSigactionSigint.sa_handler = &sigintHandler;
 
         tmp = parseAndConfigure(argc, argv, &config);
 
         if (tmp == 0) {
-                // Disable SIGPIPE (no need to terminate the process)
+                if (config.printVersion == 1) {
+                        // Only print the version and exit
+                        printVersion(server);
+                        goto end;
+                }
+
+                // Set SIGPIPE handler
                 tmp = sigaction(SIGPIPE, &newSigactionSigpipe, NULL);
                 if (tmp == -1) {
                         perror("An error ocurred while disabling SIGPIPE");
@@ -45,7 +60,7 @@ int main(int argc, char* argv[])
                         goto error;
                 }
 
-                // Initialize SIGINT handler
+                // Set SIGINT handler
                 serverShutdownState = noShutdown;
                 tmp = sigaction(SIGINT, &newSigactionSigint, NULL);
                 if (tmp == -1) {
@@ -59,9 +74,9 @@ int main(int argc, char* argv[])
                 if (tmp != 0) {
                         retVal = EXIT_FAILURE;
                 }
-
         }
 
+end:
 error:
         return retVal;
 }
@@ -73,6 +88,9 @@ error:
  */
 int parseAndConfigure(int argc, char** argv, struct LobbyConfig* config)
 {
+        // General purpose return value
+        int tmp;
+
         // Return value indicating if the arguments are valid
         int retVal = 0;
 
@@ -104,11 +122,13 @@ int parseAndConfigure(int argc, char** argv, struct LobbyConfig* config)
 
                         case 'p':
                                 // Set port
-                                config->port = atoi(optarg) % 65536;
-                                if (config->port <= 0) {
+                                tmp = atoi(optarg) % 65536;
+                                if (tmp <= 0) {
                                         // Invalid input
                                         retVal = -1;
                                         fprintf(stderr, "The given port number is not valid.\n");
+                                } else {
+                                        config->port = tmp;
                                 }
                                 break;
 
@@ -140,6 +160,10 @@ int parseAndConfigure(int argc, char** argv, struct LobbyConfig* config)
         return retVal;
 }
 
+/**
+ * Signal handler for SIGINT
+ * Modifies the server shutdown state trying to initiate a friendly shutdown
+ */
 void sigintHandler(int signum)
 {
         if (serverShutdownState == noShutdown) {

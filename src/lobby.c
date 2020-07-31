@@ -13,7 +13,6 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include "printVersion.h"
 #include "server.h"
 #include "serverConfig.h"
 #include "worker.h"
@@ -39,12 +38,6 @@ int lobby(struct LobbyConfig* config)
         int lobbySocketID;
 
         struct sockaddr_in lobbyAddr;
-
-        if (config->printVersion == 1) {
-                // Only print the version and exit
-                printVersion(server);
-                return 0;
-        }
 
         printf("Starting esftp server...\n");
 

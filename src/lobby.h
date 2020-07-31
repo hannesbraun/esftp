@@ -8,7 +8,7 @@
 struct LobbyConfig {
         char** items;
         unsigned long int itemsLen;
-        short int port;
+        unsigned short int port;
         unsigned char printVersion: 1;
 };
 

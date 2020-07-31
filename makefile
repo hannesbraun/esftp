@@ -1,12 +1,12 @@
 all: bin/esftp-server bin/esftp-client
 
-bin/esftp-server: src/server.h src/serverConfig.h src/workerList.h src/mainServer.c src/lobby.c src/worker.c src/globals.c src/workerList.c build/fileSize.o build/printVersion.o
+bin/esftp-server: src/server.h src/serverConfig.h src/workerList.h src/server.c src/lobby.c src/worker.c src/globals.c src/workerList.c build/fileSize.o build/printVersion.o
 	mkdir -p bin
-	gcc -Wall -o bin/esftp-server -pthread src/mainServer.c src/lobby.c src/worker.c src/globals.c src/workerList.c build/fileSize.o build/printVersion.o
+	gcc -Wall -o bin/esftp-server -pthread src/server.c src/lobby.c src/worker.c src/globals.c src/workerList.c build/fileSize.o build/printVersion.o
 
-bin/esftp-client: src/client.h src/mainClient.c src/esftpClient.c build/recvExact.o build/printVersion.o
+bin/esftp-client: src/client.h src/client.c src/esftpClient.c build/recvExact.o build/printVersion.o
 	mkdir -p bin
-	gcc -Wall -o bin/esftp-client src/mainClient.c src/esftpClient.c build/recvExact.o build/printVersion.o
+	gcc -Wall -o bin/esftp-client src/client.c src/esftpClient.c build/recvExact.o build/printVersion.o
 
 build/recvExact.o: src/recvExact.c src/recvExact.h
 	mkdir -p build
