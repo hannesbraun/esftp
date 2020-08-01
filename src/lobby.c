@@ -23,26 +23,29 @@ int checkItemAvaliability(struct LobbyConfig* config);
 
 /**
  * The lobby mainly handles new connections and starts the worker threads.
- * It also includes other smaller functionalies.
  */
 int lobby(struct LobbyConfig* config)
 {
         // Worker list
         struct WorkerList workerList;
 
-        // General purpose return value
-        int retVal = 0;
+        // General purpose return variable
         int tmp;
 
-        // The socket ids of the lobby and the last created worker
+        // Function return value
+        int retVal = 0;
+
+        // The socket id of the lobby
         int lobbySocketID;
 
+        // Lobby address
         struct sockaddr_in lobbyAddr;
 
         printf("Starting esftp server...\n");
 
         tmp = checkItemAvaliability(config);
         if (tmp == -1) {
+                // Not all items are available
                 // Running the server/accessing the items is probably not going to work
                 return -1;
         }
@@ -71,7 +74,7 @@ int lobby(struct LobbyConfig* config)
         tmp = bind(lobbySocketID, (struct sockaddr*) &lobbyAddr, sizeof(lobbyAddr));
         if (tmp == -1) {
                 retVal = -1;
-                perror("An error ocurred while binding");
+                perror("An error ocurred while binding the lobby socket");
                 goto errorSocketBind;
         }
 
@@ -79,7 +82,7 @@ int lobby(struct LobbyConfig* config)
         tmp = listen(lobbySocketID, BACKLOGSIZE);
         if (tmp == -1) {
                 retVal = -1;
-                perror("An error ocurred while setting socket to listening mode");
+                perror("An error ocurred while setting the lobby socket to listening mode");
                 goto errorSocketListen;
         }
 
@@ -88,15 +91,34 @@ int lobby(struct LobbyConfig* config)
                 tmp = handleRequest(lobbySocketID, &workerList, config);
                 switch (tmp) {
                         case -1:
+                        // Probably not enough free memory available to allocate space for the worker config
+                        // Worker list has been cleaned up
                         case -2:
+                        // Non-fatal error while accepting the connection (including interruption by SIGINT)
                         case -4:
+                        // Not enough resources to start the worker thread
+                        case -7:
+                                // Adding worker config to worker list was not possible
+
                                 // Try again, but wait a second to avoid wasting cpu time
                                 sleep(1);
                                 break;
+
+                        // Reasons to leave the lobby
                         case -3:
+                        // Error while accepting a connection
                         case -5:
+                        // pthread_create error that shouldn't occur or
                         case -6:
-                        case -7:
+                        // Error while cleaning up worker list
+                        // Should never happen
+                        // I believe it's pretty critical if it does happen anyway, so a shutdown might be a good idea.
+                        case -8:
+                        // Unable to close the socket during error handling
+                        // Too much interruptions
+                        case -9:
+                                // Unable to close the socket during error handling
+
                                 // Stop the server
                                 serverShutdownState = forceShutdown;
                                 retVal = -1;
@@ -112,7 +134,6 @@ int lobby(struct LobbyConfig* config)
 
 errorSocketListen:
 errorSocketBind:
-
         // Closing the lobby socket
         tmp = close(lobbySocketID);
         if (tmp == -1) {
@@ -127,18 +148,24 @@ errorSocketBind:
         }
 
 errorSocketBuild:
-
         wlFree(&workerList);
 
 errorWLInit:
-
         return retVal;
 }
 
+/**
+ * Handles an incoming request and starts a worker.
+ */
 int handleRequest(int lobbySocketID, struct WorkerList* workerList, struct LobbyConfig* lobbyConfig)
 {
+        // General purpose return variable
         int tmp;
+
+        // Function return value
         int retVal = 0;
+
+        // Counting how often to try again closing the socket while handling an error
         int tryAgain;
 
         // Thread id of the last created worker thread
@@ -153,7 +180,7 @@ int handleRequest(int lobbySocketID, struct WorkerList* workerList, struct Lobby
         if (workerConfig == NULL) {
                 fprintf(stderr, "An error ocurred while allocating memory for the worker config. Trying to clean up the worker list and trying again...\n");
 
-                // Not catching return value here because this should an error shouldn't occur at cleanup
+                // Not catching return value here because an error shouldn't occur at cleanup
                 // Also, this seems irrelevant, since an error already ocurred.
                 wlCleanup(workerList);
                 retVal = -1;
@@ -192,12 +219,13 @@ int handleRequest(int lobbySocketID, struct WorkerList* workerList, struct Lobby
         // Create worker thread
         tmp = pthread_create(&tidWorker, NULL, worker, workerConfig);
         if (tmp != 0) {
-                fprintf(stderr, "An error ocurred while starting the worker: %s\n", strerror(tmp));
+                fprintf(stderr, "An error ocurred while starting the worker thread: %s\n", strerror(tmp));
 
                 if (errno == EAGAIN) {
                         // Not enough resources, try again
                         retVal = -4;
                 } else {
+                        // Another error, probably not happening
                         retVal = -5;
                 }
 
@@ -215,7 +243,7 @@ int handleRequest(int lobbySocketID, struct WorkerList* workerList, struct Lobby
         workerConfig->tid = tidWorker;
         tmp = wlAdd(workerList, workerConfig);
         if (tmp == -1) {
-                // Probably out of memory -> better shut down the server to avoid memory leaks
+                // Probably out of memory/resizing the worker list was not possible
                 retVal = -7;
         }
 
@@ -223,46 +251,53 @@ cleanup:
 
         if (retVal >= -4 && retVal <= -7) {
                 // Close socket since an error ocurred
-                tryAgain = 3;
+                tryAgain = 10;
 closeInterrupt:
                 tmp = close(workerSocketID);
                 if (tmp == -1) {
                         if (errno == EINTR) {
-                                // Try again
                                 tryAgain--;
                                 if (tryAgain > 0) {
+                                        // Try to close the socket again
                                         goto closeInterrupt;
+                                } else {
+                                        fprintf(stderr, "Too much interruptions\n");
+                                        retVal = -8;
+                                }
+                        } else {
+                                // Other error while closing the socket (not interrupted)
+                                perror("An error ocurred while closing the worker socket for error handling purposes");
+
+                                if (retVal == -4 || retVal == -7) {
+                                        // Don't try again, better shut down the server
+                                        retVal = -9;
                                 }
                         }
-
-                        if (retVal == -4) {
-                                // Don't try again, better shut down the server
-                                retVal = -5;
-                        }
-                        perror("An error ocurred while closing the worker socket after pthread_failed");
                 }
         }
 
         if (retVal < -1) {
+                // Free allocated space for the unused worker config
                 free(workerConfig);
         }
-
 
         return retVal;
 }
 
-
+/**
+ * Checks if all items are available
+ */
 int checkItemAvaliability(struct LobbyConfig* config)
 {
-        int currentItem = 0;
+        // Function return value
         int retVal = 0;
-        int i;
 
+        int i;
         for (i = 0; i < config->itemsLen; i++) {
-                if (access(config->items[currentItem], R_OK) == -1) {
+                if (access(config->items[i], R_OK) == -1) {
                         // Item doesn't exist or is not readable... it's an error
                         retVal = -1;
-                        fprintf(stderr, "Error while trying to access %s: %s\n", config->items[currentItem], strerror(errno));
+                        fprintf(stderr, "Error while trying to access %s: %s\n", config->items[i], strerror(errno));
                 }
         }
 
