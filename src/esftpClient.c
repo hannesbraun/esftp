@@ -306,7 +306,7 @@ error:
 
 void printStatus(uint64_t* byteProgress, struct timeval* timeProgress, uint64_t size, unsigned char erase)
 {
-        int i;
+        unsigned int i;
         enum ByteUnit unitSize;
         enum ByteUnit unitSpeed;
         uint64_t transferred;

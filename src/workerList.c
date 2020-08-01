@@ -28,7 +28,7 @@ int wlInitialize(struct WorkerList* workerList)
 
 int wlCleanup(struct WorkerList* workerList)
 {
-        int i;
+        unsigned int i;
         int tmp;
 
         for (i = 0; i < workerList->usedSlots; i++) {
@@ -54,11 +54,12 @@ int wlCleanup(struct WorkerList* workerList)
         return 0;
 }
 
-int wlDelete(struct WorkerList* workerList, int index)
+int wlDelete(struct WorkerList* workerList, unsigned int index)
 {
-        int i;
+        // Using long long here to be able to store the highest possible index plus 1
+        unsigned long long int i;
 
-        if (index >= workerList->usedSlots || index < 0) {
+        if (index >= workerList->usedSlots) {
                 // Index invalid
                 fprintf(stderr, "Deleting worker from list not successful: index out of bounds\n");
                 return -1;

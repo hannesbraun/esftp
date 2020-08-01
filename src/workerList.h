@@ -15,7 +15,7 @@ struct WorkerList {
 
 int wlInitialize(struct WorkerList* workerList);
 int wlCleanup(struct WorkerList* workerList);
-int wlDelete(struct WorkerList* workerList, int index);
+int wlDelete(struct WorkerList* workerList, unsigned int index);
 int wlAdd(struct WorkerList* workerList, struct WorkerConfig* workerConfig);
 int wlResize(struct WorkerList* workerList, unsigned int newArraySize);
 int wlJoin(struct WorkerList* workerList);

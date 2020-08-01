@@ -292,7 +292,7 @@ int checkItemAvaliability(struct LobbyConfig* config)
         // Function return value
         int retVal = 0;
 
-        int i;
+        unsigned long int i;
         for (i = 0; i < config->itemsLen; i++) {
                 if (access(config->items[i], R_OK) == -1) {
                         // Item doesn't exist or is not readable... it's an error
