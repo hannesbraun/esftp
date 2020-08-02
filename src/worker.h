@@ -14,6 +14,7 @@ struct WorkerConfig {
         unsigned long int itemsLen;
         pthread_t tid;
         unsigned char finished: 1;
+        unsigned char selfFree: 1;
 };
 
 void* worker(void* vConfig);

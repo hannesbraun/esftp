@@ -153,7 +153,7 @@ int recvLevel(int socketID)
                         name[NAME_MAX] = 0;
                 }
 
-                if (header.item.type == TYPE_FOLDER) {
+                if (header.item.type == TYPE_DIRECTORY) {
                         // Directory
 
                         // Create
@@ -164,7 +164,7 @@ int recvLevel(int socketID)
                                 goto error;
                         }
 
-                        if (header.item.emptyFolder == 0) {
+                        if (header.item.emptyDirectory == 0) {
                                 // Receive directory content
                                 tmp = chdir(name);
                                 if (tmp == -1) {

@@ -165,6 +165,9 @@ int handleRequest(int lobbySocketID, struct WorkerList* workerList, struct Lobby
         // Function return value
         int retVal = 0;
 
+        // Original return value (before an error occurs in the error handling part)
+        int origRetVal;
+
         // Counting how often to try again closing the socket while handling an error
         int tryAgain;
 
@@ -215,6 +218,7 @@ int handleRequest(int lobbySocketID, struct WorkerList* workerList, struct Lobby
         workerConfig->items = lobbyConfig->items;
         workerConfig->itemsLen = lobbyConfig->itemsLen;
         workerConfig->finished = 0;
+        workerConfig->selfFree = 0;
 
         // Create worker thread
         tmp = pthread_create(&tidWorker, NULL, worker, workerConfig);
@@ -248,7 +252,7 @@ int handleRequest(int lobbySocketID, struct WorkerList* workerList, struct Lobby
         }
 
 cleanup:
-
+        origRetVal = retVal;
         if (retVal >= -4 && retVal <= -7) {
                 // Close socket since an error ocurred
                 tryAgain = 10;
@@ -273,12 +277,19 @@ closeInterrupt:
                                         retVal = -9;
                                 }
                         }
+                } else {
+                        // Invalidate socket for worker
+                        workerConfig->socketID = -1;
                 }
         }
 
-        if (retVal < -1) {
-                // Free allocated space for the unused worker config
+        // Is memory for the config allocated?
+        // And only free allocated memory if worker is not already running (else: the worker has to free the memory)
+        if (retVal < -1 && origRetVal != -6 && origRetVal != -7) {
                 free(workerConfig);
+        } else {
+                // Tell worker to free memory himself
+                workerConfig->selfFree = 1;
         }
 
         return retVal;

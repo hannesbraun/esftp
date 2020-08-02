@@ -1,8 +1,5 @@
 /**
- * @file worker.c
- * @brief File contains the worker code for the server to actually send the data to a client.
- * @author Hannes Braun
- * @date 18.06.2019
+ * File contains the worker code for the server to actually send the data to a client.
  */
 
 #define _FILE_OFFSET_BITS 64
@@ -28,10 +25,10 @@
 #include "fileSize.h"
 
 int getItemHeader(char* path, union ItemHeader* header);
-int isFolderEmpty(char* path);
-int sendItemViaTCP(int socketID, union ItemHeader* header, char* path);
-int sendInner(int socketID, char* path);
-ssize_t sendMultiple(int sockfd, const void* buf, size_t len, int flags, int tries);
+int isDirectoryEmpty(char* path);
+int sendItemViaTCP(int* socketID, union ItemHeader* header, char* path);
+int sendInner(int* socketID, char* path);
+ssize_t sendMultiple(int* sockfd, const void* buf, size_t len, int flags, int tries);
 ssize_t readMultiple(int fd, void* buf, size_t count, int tries);
 
 /**
@@ -39,13 +36,13 @@ ssize_t readMultiple(int fd, void* buf, size_t count, int tries);
  */
 void* worker(void* vConfig)
 {
-        // Cast to WorkerArguments for better access
+        // Cast to WorkerConfig* for better access
         struct WorkerConfig* config = (struct WorkerConfig*) vConfig;
 
         // This worker is compliant with version 1 of the esftp protocol
         unsigned char headerByte = 1;
 
-        // General purpose return value
+        // General purpose variable
         int tmp;
 
         unsigned long int i;
@@ -53,7 +50,7 @@ void* worker(void* vConfig)
         union ItemHeader itemHeader;
 
         // Send the header byte
-        tmp = sendMultiple(config->socketID, &headerByte, 1, 0, MAX_TRIES_EINTR);
+        tmp = sendMultiple(&(config->socketID), &headerByte, 1, 0, MAX_TRIES_EINTR);
         if (tmp == -1) {
                 perror("An error ocurred while sending the header byte");
                 goto error;
@@ -69,14 +66,15 @@ void* worker(void* vConfig)
                         itemHeader.item.lastItem = 1;
                 }
 
-                // Send
-                tmp = sendItemViaTCP(config->socketID, &itemHeader, config->items[i]);
+                // Send item
+                tmp = sendItemViaTCP(&(config->socketID), &itemHeader, config->items[i]);
                 if (tmp == -1) {
                         goto error;
                 }
 
-                if (itemHeader.item.type == TYPE_FOLDER && itemHeader.item.emptyFolder == 0) {
-                        tmp = sendInner(config->socketID, config->items[i]);
+                if (itemHeader.item.type == TYPE_DIRECTORY && itemHeader.item.emptyDirectory == 0) {
+                        // Send inner content
+                        tmp = sendInner(&(config->socketID), config->items[i]);
                         if (tmp == -1) {
                                 goto error;
                         }
@@ -84,13 +82,20 @@ void* worker(void* vConfig)
         }
 
 error:
-        // Close socket
-        tmp = close(config->socketID);
-        if (tmp == -1) {
-                perror("An error ocurred while closing the worker socket");
+        // Close socket if not already closed by error handling in lobby
+        if (config->socketID != -1) {
+                tmp = close(config->socketID);
+                if (tmp == -1) {
+                        perror("An error ocurred while closing the worker socket");
+                }
         }
 
-        config->finished = 1;
+        if (config->selfFree == 0) {
+                config->finished = 1;
+        } else {
+                free(vConfig);
+        }
+
         return NULL;
 }
 
@@ -109,17 +114,19 @@ int getItemHeader(char* path, union ItemHeader* header)
         }
 
         if (S_ISREG(result.st_mode)) {
+                // File
                 (*header).item.type = TYPE_FILE;
-                (*header).item.emptyFolder = 0;
+                (*header).item.emptyDirectory = 0;
         } else if (S_ISDIR(result.st_mode)) {
-                (*header).item.type = TYPE_FOLDER;
+                // Directory
+                (*header).item.type = TYPE_DIRECTORY;
 
-                // Check if folder is empty
-                empty = isFolderEmpty(path);
+                // Check if directory is empty
+                empty = isDirectoryEmpty(path);
                 if (empty == 1) {
-                        (*header).item.emptyFolder = 1;
+                        (*header).item.emptyDirectory = 1;
                 } else if (empty == 0) {
-                        (*header).item.emptyFolder = 0;
+                        (*header).item.emptyDirectory = 0;
                 } else {
                         return -1;
                 }
@@ -128,7 +135,12 @@ int getItemHeader(char* path, union ItemHeader* header)
         return 0;
 }
 
-int isFolderEmpty(char* path)
+/**
+ * Checks if the given directory is empty.
+ * Returns 1 if the directory is empty and 0 if the directory is not empty.
+ * If an error occurs, -1 will be returned.
+ */
+int isDirectoryEmpty(char* path)
 {
         int i = 0;
         struct dirent* entry;
@@ -146,7 +158,7 @@ int isFolderEmpty(char* path)
         while ((entry = readdir(dir)) != NULL) {
                 i++;
                 if (i > 2) {
-                        // Folder is not empty
+                        // Directory is not empty
                         break;
                 }
         }
@@ -175,23 +187,38 @@ int isFolderEmpty(char* path)
 /**
  * Sends an item via TCP
  */
-int sendItemViaTCP(int socketID, union ItemHeader* header, char* path)
+int sendItemViaTCP(int* socketID, union ItemHeader* header, char* path)
 {
+        // Function return value
         int retVal = 0;
+
+        // General purpose variable
         int tmp;
+
+        // Item path (copy to keep the original)
         char pathCpy[4096] = {0};
+
+        // Basename of the item
         char* base;
+
+        // Item size in bytes
         uint64_t size;
+
+        // File descriptor for file and reading buffer
         int fd;
         unsigned char buf[BUFFERSIZE];
+
         // Read bytes at last read operation
         int readBytes;
+
+        // Item name length for header
         unsigned int nameLen;
 
+        // Get basename
         strncpy(pathCpy, path, strlen(path) + 1);
         base = basename(pathCpy);
 
-        // Calculate filename length
+        // Calculate item name length
         nameLen = (strlen(base)) / 128;
         if (nameLen > 31) {
                 (*header).item.nameLen = 31;
@@ -200,7 +227,7 @@ int sendItemViaTCP(int socketID, union ItemHeader* header, char* path)
                 (*header).item.nameLen = nameLen;
         }
 
-        // Header
+        // Send header
         tmp = sendMultiple(socketID, &(*header).byte, 1, 0, MAX_TRIES_EINTR);
         if (tmp == -1) {
                 perror("An error ocurred while sending the item header byte");
@@ -208,7 +235,7 @@ int sendItemViaTCP(int socketID, union ItemHeader* header, char* path)
                 goto error;
         }
 
-        // Item name
+        // Send item name
         tmp = sendMultiple(socketID, base, ((*header).item.nameLen + 1) * 128, 0, MAX_TRIES_EINTR);
         if (tmp == -1) {
                 perror("An error ocurred while sending the item name");
@@ -252,7 +279,7 @@ int sendItemViaTCP(int socketID, union ItemHeader* header, char* path)
 
 
                         if (readBytes > 0) {
-                                // Sending File
+                                // Sending file
                                 tmp = sendMultiple(socketID, buf, readBytes, 0, MAX_TRIES_EINTR);
                                 if (tmp == -1) {
                                         fprintf(stderr, "An error ocurred while sending the file %s: %s\n", path, strerror(errno));
@@ -279,13 +306,21 @@ error:
 /**
  * Sends the contents of a directory
  */
-int sendInner(int socketID, char* path)
+int sendInner(int* socketID, char* path)
 {
+        // Item header for items directory
         union ItemHeader header;
+
+        // Stuff to read directory contents
         DIR* dir;
         struct dirent* entry;
+
+        // Function return value
         int retVal = 0;
+
+        // Path to item
         char* pathCurr;
+
         char* tmpPtr;
         int tmp;
 
@@ -304,6 +339,7 @@ int sendInner(int socketID, char* path)
                 goto errorBeforeMalloc;
         }
 
+        // Initial memory allocation
         pathCurr = (char*) malloc((strlen(path) + 1 + strlen(entry->d_name) + 1) * sizeof(char));
         if (pathCurr == NULL) {
                 fprintf(stderr, "An error ocurred while allocating memory for the path string.\n");
@@ -314,9 +350,15 @@ int sendInner(int socketID, char* path)
         while (entry != NULL) {
                 // Check for . and ..
                 if (strncmp(entry->d_name, ".", 2) == 0 || strncmp(entry->d_name, "..", 3) == 0) {
+                        // Skip
                         errno = 0;
                         entry = readdir(dir);
-                        // Error handling located after loop
+                        if (errno != 0) {
+                                fprintf(stderr, "An error ocurred while reading the directory %s: %s\n", path, strerror(errno));
+                                retVal = -1;
+                                goto error;
+                        }
+
                         continue;
                 }
 
@@ -354,6 +396,7 @@ int sendInner(int socketID, char* path)
                         goto error;
                 }
 
+                // Is last item?
                 if (entry == NULL) {
                         header.item.lastItem = 1;
                 } else {
@@ -366,7 +409,7 @@ int sendInner(int socketID, char* path)
                         goto error;
                 }
 
-                if (header.item.type == TYPE_FOLDER && header.item.emptyFolder == 0) {
+                if (header.item.type == TYPE_DIRECTORY && header.item.emptyDirectory == 0) {
                         tmp = sendInner(socketID, pathCurr);
                         if (tmp == -1) {
                                 retVal = -1;
@@ -374,11 +417,7 @@ int sendInner(int socketID, char* path)
                         }
                 }
         }
-        if (errno != 0) {
-                fprintf(stderr, "An error ocurred while reading the directory %s: %s\n", path, strerror(errno));
-                retVal = -1;
-                goto error;
-        }
+
 
 error:
         free(pathCurr);
@@ -396,18 +435,21 @@ errorBeforeMalloc:
 /**
  * Send a message on a socket with multiple tries in case of an interrupt
  */
-ssize_t sendMultiple(int sockfd, const void* buf, size_t len, int flags, int tries)
+ssize_t sendMultiple(int* sockfd, const void* buf, size_t len, int flags, int tries)
 {
         ssize_t tmp;
 
         do {
-                tmp = send(sockfd, buf, len, flags);
+                tmp = send(*sockfd, buf, len, flags);
                 tries--;
         } while (tmp == -1 && tries > 0 && errno == EINTR);
 
         return tmp;
 }
 
+/**
+ * Read data from a file with multiple tries in case of an interrupt
+ */
 ssize_t readMultiple(int fd, void* buf, size_t count, int tries)
 {
         ssize_t tmp;
