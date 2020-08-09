@@ -1,8 +1,5 @@
 /**
- * @file main.c
- * @brief File contains the main function for the client as well as the parseArguments function.
- * @author Hannes Braun
- * @date 16.06.2019
+ * Main client module
  */
 
 #include <getopt.h>
@@ -14,53 +11,43 @@
 #include "printVersion.h"
 
 /**
- * @fn int main(int argc, char* argv[])
- * @brief This is the main function for the client.
- * @param argc the amount of command line arguments
- * @param argv the command line arguments
- * @return int EXIT_SUCCESS in case of a successful exit
- * @author Hannes Braun
- * @date 16.06.2019
+ * Main function for client
  */
 int main(int argc, char* argv[])
 {
+        // Process return value
         int retVal = EXIT_SUCCESS;
+
         int tmp;
 
-        struct Config config;
+        struct ClientConfig config;
 
         tmp = parseAndConfigure(argc, argv, &config);
-
         if (tmp == -1) {
                 retVal = EXIT_FAILURE;
                 goto error;
         }
 
         if (config.printVersion == 1) {
+                // Print client version and exit
                 printVersion(client);
         } else {
+                // Connect to server and receive data
                 tmp = connectAndReceive(&config);
                 if (tmp == -1) {
                         retVal = EXIT_FAILURE;
+                        goto error;
                 }
         }
 
 error:
-
         return retVal;
 }
 
 /**
- * @fn void parseAndConfigure(int argc, char* argv[], ClientConfiguration* psConfiguration)
- * @brief This function parses the given command line arguments and stores the parseed values in the given struct.
- * @param argc amount of command line arguments
- * @param argv values of command line arguments
- * @param psConfiguration the struct to write the parsed information to
- * @return void
- * @author Hannes Braun
- * @date 09.07.2019
+ * This function parses the given command line arguments and stores the parseed values in the given struct.
  */
-int parseAndConfigure(int argc, char* argv[], struct Config* config)
+int parseAndConfigure(int argc, char* argv[], struct ClientConfig* config)
 {
         int retVal = 0;
         int tmp;
@@ -77,9 +64,8 @@ int parseAndConfigure(int argc, char* argv[], struct Config* config)
         };
 
         while (1) {
-
+                // Get next option
                 optCode = getopt_long(argc, argv, "o:p:", longOptions, &optionIndex);
-
                 if (optCode == -1) {
                         // No more options found
                         break;
@@ -87,7 +73,7 @@ int parseAndConfigure(int argc, char* argv[], struct Config* config)
 
                 switch (optCode) {
                         case 1:
-                                // Version
+                                // Version will be printed
                                 config->printVersion = 1;
                                 break;
 
@@ -101,7 +87,7 @@ int parseAndConfigure(int argc, char* argv[], struct Config* config)
                                 }
                                 break;
 
-                        case '?':
+                        case '?': // Error message already printed by getopt_long
                         default:
                                 break;
                 }

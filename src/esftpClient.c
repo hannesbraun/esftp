@@ -1,8 +1,5 @@
 /**
- * @file esftp_client.c
- * @brief File contains the actual function to receive the data from the server.
- * @author Hannes Braun
- * @date 16.06.2019
+ * File contains the actual esftp client code to receive the data from the server.
  */
 
 #define _FILE_OFFSET_BITS 64
@@ -45,31 +42,29 @@ void shiftDec(unsigned int* dec, uint64_t in);
 void getUnitStr(enum ByteUnit unit, char* str);
 
 /**
- * @fn void parseArguments(int argc, char* argv[], ClientArguments* psArguments)
- * @brief This function parses the command line arguments.
- * @param argc the amount of command line arguments
- * @param argv the command line arguments
- * @param psArguments the struct to write the parsed data to
- * @return void
- * @author Hannes Braun
- * @date 16.06.2019
+ * Connects to a server and receives the data.
  */
-int connectAndReceive(struct Config* config)
+int connectAndReceive(struct ClientConfig* config)
 {
-        // General purpose return value
+        // General purpose return variable
         int tmp;
+
+        // Function return variable
         int retVal = 0;
 
+        // Socket file descriptor
         int socketID;
 
+        // Server address
         struct sockaddr_in serverAddr;
 
-        // Information to receive
+        // Header byte for whole transmission
         unsigned char headerByte;
 
+        // Create socket
         socketID = socket(AF_INET, SOCK_STREAM, 0);
 
-        // Setting properties for lobby address
+        // Setting properties for server address
         serverAddr.sin_family = AF_INET;
         serverAddr.sin_port = htons(config->port);
         serverAddr.sin_addr = config->addr;
@@ -79,7 +74,7 @@ int connectAndReceive(struct Config* config)
         tmp = connect(socketID, (struct sockaddr*) &serverAddr, sizeof(serverAddr));
         if (tmp == -1) {
                 printf("failed\n");
-                perror("An error ocurred while connecting to the client");
+                perror("An error ocurred while connecting to the server");
                 retVal = -1;
                 goto error;
         } else {
@@ -106,7 +101,6 @@ int connectAndReceive(struct Config* config)
                 goto error;
         }
 
-
 error:
         // Closing the socket
         tmp = close(socketID);
@@ -117,6 +111,10 @@ error:
         return retVal;
 }
 
+/**
+ * Receives one level.
+ * This can be either the content of the root directory or the content of any subdirectory.
+ */
 int recvLevel(int socketID)
 {
         int tmp;
@@ -147,7 +145,7 @@ int recvLevel(int socketID)
                         retVal = -1;
                         goto error;
                 }
-                // Safety first, ensure the null byte at the end of the name and at max name length position
+                // Safety first: ensure null byte at the end of the name and at max name length position
                 name[4095] = 0;
                 if (NAME_MAX < 4096) {
                         name[NAME_MAX] = 0;
@@ -159,29 +157,31 @@ int recvLevel(int socketID)
                         // Create
                         tmp = mkdir(name, 0750);
                         if (tmp == -1) {
-                                perror("An error ocurred while creating the directory");
+                                perror("An error ocurred while creating a directory");
                                 retVal = -1;
                                 goto error;
                         }
 
                         if (header.item.emptyDirectory == 0) {
-                                // Receive directory content
+                                // Change working directory to new directory
                                 tmp = chdir(name);
                                 if (tmp == -1) {
-                                        perror("An error ocurred while changing the directory");
+                                        perror("An error ocurred while changing into a new directory");
                                         retVal = -1;
                                         goto error;
                                 }
 
+                                // Receive directory content
                                 tmp = recvLevel(socketID);
                                 if (tmp == -1) {
                                         retVal = -1;
                                         goto error;
                                 }
 
+                                // Go back to parent directory
                                 tmp = chdir("..");
                                 if (tmp == -1) {
-                                        perror("An error ocurred while changing the directory");
+                                        perror("An error ocurred while changing back to the parent directory");
                                         retVal = -1;
                                         goto error;
                                 }
@@ -197,6 +197,7 @@ int recvLevel(int socketID)
                                 goto error;
                         }
 
+                        // Receive file data
                         tmp = recvFile(socketID, size, name);
                         if (tmp == -1) {
                                 retVal = -1;
@@ -210,6 +211,9 @@ error:
         return retVal;
 }
 
+/**
+ * Receives a single file
+ */
 int recvFile(int socketID, uint64_t size, char* name)
 {
         int tmp;
