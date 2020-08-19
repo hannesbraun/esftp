@@ -169,6 +169,9 @@ int parseAndConfigure(int argc, char** argv, struct LobbyConfig* config)
  */
 void sigintHandler(int signum)
 {
+        // Suppress unused parameter warning
+        (void) signum;
+
         if (serverShutdownState == noShutdown) {
                 serverShutdownState = friendlyShutdown;
         } else if (serverShutdownState == friendlyShutdown) {
