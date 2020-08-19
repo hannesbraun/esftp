@@ -1,10 +1,3 @@
-/**
- * @file fileSize.c
- * @brief File contains the fileSize function.
- * @author Hannes Braun
- * @date 16.05.2019
- */
-
 #define _FILE_OFFSET_BITS 64
 
 #include <fcntl.h>
@@ -15,7 +8,8 @@
 #include "fileSize.h"
 
 /**
- * This function calculates the size of the given file. In the case of an error
+ * This function calculates the size of the given file.
+ * In the case of an error, -1 will be returned (else 0).
  */
 int calculateFileSize(char* path, uint64_t* size)
 {

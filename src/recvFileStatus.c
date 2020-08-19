@@ -121,11 +121,10 @@ void printStatus(uint64_t* byteProgress, struct timeval* timeProgress, uint64_t 
                  decTotal,
                  unitSizeStr,
                  (transferred * 1000000) / timeDiff,
-                 (unsigned int) ((decSpeed * 1000000) / timeDiff),
+                 (unsigned int)((decSpeed * 1000000) / timeDiff),
                  unitSpeedStr,
                  min,
                  sec);
-
 
         // Print generated status string
         printf("%s", out);
