@@ -5,8 +5,8 @@
 #ifndef worker_h
 #define worker_h
 
+#include <pthread.h>
 #include <stdint.h>
-#include "pthread.h"
 
 struct WorkerConfig {
         int socketID;

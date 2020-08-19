@@ -15,6 +15,7 @@
 #include "lobby.h"
 
 int parseAndConfigure(int argc, char** argv, struct LobbyConfig* config);
+void sigintHandler(int signum);
 
 /**
  * The main function calls a function to parse the command line arguments and executes the lobby afterwards.

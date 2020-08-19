@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "server.h"
 #include "worker.h"
 #include "workerList.h"
 

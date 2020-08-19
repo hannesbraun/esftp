@@ -4,7 +4,6 @@
 
 #define _FILE_OFFSET_BITS 64
 
-#include <arpa/inet.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <stdint.h>
@@ -15,7 +14,7 @@
 #include <unistd.h>
 
 #include "commons.h"
-#include "client.h"
+#include "esftpClient.h"
 #include "recvExact.h"
 #include "recvFileStatus.h"
 

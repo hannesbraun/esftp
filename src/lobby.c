@@ -2,8 +2,6 @@
  * Lobby module for the server
  */
 
-#include "lobby.h"
-
 #include <arpa/inet.h>
 #include <errno.h>
 #include <pthread.h>
@@ -13,6 +11,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include "lobby.h"
 #include "server.h"
 #include "serverConfig.h"
 #include "worker.h"
@@ -200,7 +199,7 @@ int handleRequest(int lobbySocketID, struct WorkerList* workerList, struct Lobby
                         case ENFILE:
                         case ENOBUFS:
                                 perror("An non-fatal error ocurred while accepting a connection");
-                                // fallthrough
+                        // fallthrough
                         case EINTR: // Interrupted (likley by SIGINT)
                                 // New iteration, try again
                                 retVal = -2;

@@ -9,8 +9,6 @@
 
 #include "recvFileStatus.h"
 
-#define STATUS_STRING_SIZE 80
-
 enum ByteUnit {
         Byte,
         Kibibyte,

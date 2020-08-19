@@ -1,5 +1,5 @@
-#ifndef client_h
-#define client_h
+#ifndef esftpClient_h
+#define esftpClient_h
 
 #include <arpa/inet.h>
 
@@ -10,8 +10,6 @@ struct ClientConfig {
         short int port;
         unsigned char printVersion: 1;
 };
-
-int parseAndConfigure(int argc, char* argv[], struct ClientConfig* config);
 
 int connectAndReceive(struct ClientConfig* config);
 

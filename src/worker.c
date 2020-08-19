@@ -4,25 +4,22 @@
 
 #define _FILE_OFFSET_BITS 64
 
-#include "worker.h"
-
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <libgen.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 #include "commons.h"
+#include "fileSize.h"
 #include "server.h"
 #include "serverConfig.h"
-#include "fileSize.h"
+#include "worker.h"
 
 int getItemHeader(char* path, union ItemHeader* header);
 int isDirectoryEmpty(char* path);

@@ -6,10 +6,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "client.h"
 #include "commons.h"
+#include "esftpClient.h"
 #include "printVersion.h"
 
+int parseAndConfigure(int argc, char* argv[], struct ClientConfig* config);
 /**
  * Main function for client
  */
