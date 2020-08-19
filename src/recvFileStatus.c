@@ -113,7 +113,7 @@ void printStatus(uint64_t* byteProgress, struct timeval* timeProgress, uint64_t 
         outTotal = convertBytes(size, unitSize, &decTotal);
 
         // Write new status
-        snprintf(out, 1024, "%" PRIu64 ".%.2u %s / %" PRIu64 ".%.2u %s | %" PRIu64 ".%.2llu %s/s | ETA: %dm %ds     ",
+        snprintf(out, 1024, "%" PRIu64 ".%.2u %s / %" PRIu64 ".%.2u %s | %" PRIu64 ".%.2u %s/s | ETA: %dm %ds     ",
                  outRecv,
                  decRecv,
                  unitSizeStr,
@@ -121,7 +121,7 @@ void printStatus(uint64_t* byteProgress, struct timeval* timeProgress, uint64_t 
                  decTotal,
                  unitSizeStr,
                  (transferred * 1000000) / timeDiff,
-                 (decSpeed * 1000000) / timeDiff,
+                 (unsigned int) ((decSpeed * 1000000) / timeDiff),
                  unitSpeedStr,
                  min,
                  sec);
