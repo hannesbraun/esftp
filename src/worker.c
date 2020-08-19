@@ -192,8 +192,9 @@ int sendItemViaTCP(int* socketID, union ItemHeader* header, char* path)
         // Function return value
         int retVal = 0;
 
-        // General purpose variable
+        // General purpose variables
         int tmp;
+        void* tmpPtr;
 
         // Item path (copy to keep the original)
         char pathCpy[4096] = {0};
@@ -215,7 +216,16 @@ int sendItemViaTCP(int* socketID, union ItemHeader* header, char* path)
         unsigned int nameLen;
 
         // Get basename
-        strncpy(pathCpy, path, strlen(path) + 1);
+        if (strcmp(".", path) == 0 || strcmp("./", path) == 0) {
+                // Copy name of current directory instead to get the actual name
+                tmpPtr = getcwd(pathCpy, 4096);
+                if (tmpPtr == NULL) {
+                        retVal = -1;
+                        goto error;
+                }
+        } else {
+                strncpy(pathCpy, path, strlen(path) + 1);
+        }
         base = basename(pathCpy);
 
         // Calculate item name length
