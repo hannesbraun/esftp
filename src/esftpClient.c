@@ -6,12 +6,9 @@
 
 #include <arpa/inet.h>
 #include <fcntl.h>
-#include <inttypes.h>
 #include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -20,26 +17,10 @@
 #include "commons.h"
 #include "client.h"
 #include "recvExact.h"
-
-#define STATUS_STRING_SIZE 80
-
-enum ByteUnit {
-        Byte,
-        Kibibyte,
-        Mebibyte,
-        Gibibyte,
-        Tebibyte,
-        Pebibyte,
-        Exbibyte
-};
+#include "recvFileStatus.h"
 
 int recvLevel(int socketID);
 int recvFile(int socketID, uint64_t size, char* name);
-void printStatus(uint64_t* byteProgress, struct timeval* timeProgress, uint64_t size, unsigned char erase);
-enum ByteUnit getUnit(uint64_t size);
-uint64_t convertBytes(uint64_t bytes, enum ByteUnit unit, unsigned int* dec);
-void shiftDec(unsigned int* dec, uint64_t in);
-void getUnitStr(enum ByteUnit unit, char* str);
 
 /**
  * Connects to a server and receives the data.
@@ -218,19 +199,33 @@ int recvFile(int socketID, uint64_t size, char* name)
 {
         int tmp;
         int retVal = 0;
+        int i;
 
+        // Number of bytes left to receive
         uint64_t bytesLeft = size;
+
+        // Number of bytes received per operation of recv
         int bytesRecv;
 
+        // File descriptor for file to receive
         int fd;
+
+        // Receive buffer
         unsigned char buf[RECVBUFFERSIZE];
+
+        // Buffer size for the recv function (max amount of bytes to receive)
         unsigned int bufSize;
 
+        // States of the time and bytes received at the last 20 times the status
+        // was printed
         uint64_t byteProgress[21] = {0};
         struct timeval timeProgress[21];
+
+        // Current timestamp
         struct timeval timeCurrent;
+
+        // Time between last status print and now in usecs
         uint64_t timeDiff;
-        int i;
 
         // Opening the file
         fd = open(name, O_WRONLY | O_CREAT | O_EXCL, 0640);
@@ -239,6 +234,7 @@ int recvFile(int socketID, uint64_t size, char* name)
                 return -1;
         }
 
+        // Get first timestamp for speed measurement/status
         tmp = gettimeofday(&(timeProgress[20]), NULL);
         if (tmp == -1) {
                 perror("An error ocurred while getting the time of the day");
@@ -254,6 +250,8 @@ int recvFile(int socketID, uint64_t size, char* name)
                 } else {
                         bufSize = bytesLeft;
                 }
+
+                // Receive as much data as possible
                 bytesRecv = recv(socketID, buf, bufSize, 0);
                 if (bytesRecv == -1) {
                         perror("An error ocurred while receiving the file");
@@ -291,14 +289,16 @@ int recvFile(int socketID, uint64_t size, char* name)
                         byteProgress[20] = size - bytesLeft;
                         timeProgress[20] = timeCurrent;
 
+                        // Print status
                         printStatus(byteProgress, timeProgress, size, 0);
                 }
         }
 
+        // Erase printed status
         printStatus(byteProgress, timeProgress, size, 1);
 
 error:
-        // Closing file
+        // Close file
         tmp = close(fd);
         if (tmp == -1) {
                 perror("An error ocurred while closing the file");
@@ -306,172 +306,4 @@ error:
         }
 
         return retVal;
-}
-
-void printStatus(uint64_t* byteProgress, struct timeval* timeProgress, uint64_t size, unsigned char erase)
-{
-        unsigned int i;
-        enum ByteUnit unitSize;
-        enum ByteUnit unitSpeed;
-        uint64_t transferred;
-        uint64_t timeDiff;
-        uint64_t speed;
-        unsigned int dec;
-        unsigned int min;
-        unsigned int sec;
-        uint64_t bytesLeft = size - byteProgress[20];
-        char out[1024];
-        char unitSizeStr[4];
-        char unitSpeedStr[4];
-
-        // Get file size unit
-        unitSize = getUnit(size);
-        getUnitStr(unitSize, unitSizeStr);
-
-        // Calculate bytes transfered and time difference
-        transferred = byteProgress[20] - byteProgress[0];
-        timeDiff = (timeProgress[20].tv_sec * 1000000 + timeProgress[20].tv_usec) - (timeProgress[0].tv_sec * 1000000 + timeProgress[0].tv_usec);
-
-        // Calculate speed in bytes per second and eta
-        speed = (transferred * 1000000) / timeDiff;
-        if (speed > 0) {
-                min = (bytesLeft / speed) / 60;
-                sec = (bytesLeft / speed) % 60;
-        } else {
-                // Avoid division by zero
-                min = UINT_MAX;
-                sec = UINT_MAX;
-        }
-
-        // Get speed unit
-        unitSpeed = getUnit(transferred);
-        transferred = convertBytes(transferred, unitSpeed, &dec);
-        getUnitStr(unitSpeed, unitSpeedStr);
-
-        // Write new status
-        snprintf(out, 1024, "%" PRIu64 " %s / %" PRIu64 " %s | %" PRIu64 ",%llu %s/s | ETA: %dm %ds   ",
-                 convertBytes(byteProgress[20], unitSize, &dec),
-                 unitSizeStr,
-                 convertBytes(size, unitSize, &dec),
-                 unitSizeStr,
-                 (transferred * 1000000) / timeDiff,
-                 (dec * 1000000) / timeDiff,
-                 unitSpeedStr,
-                 min,
-                 sec);
-
-        // Move cursor backwards
-        printf("\x1b[1024D");
-        if (erase == 0) {
-                // Update status
-                printf("%s", out);
-        } else if (erase == 1) {
-                // Erase status
-                for (i = 0; i < strlen(out); i++) {
-                        putchar(' ');
-                }
-                printf("\x1b[1024D");
-        }
-
-        fflush(stdout);
-}
-
-enum ByteUnit getUnit(uint64_t size)
-{
-        if (size < 1000) {
-                return Byte;
-        } else if (size < 1000000) {
-                return Kibibyte;
-        } else if (size < 1000000000) {
-                return Mebibyte;
-        } else if (size < 1000000000000) {
-                return Gibibyte;
-        } else if (size < 1000000000000000) {
-                return Tebibyte;
-        } else if (size < 1000000000000000000) {
-                return Pebibyte;
-        } else {
-                return Exbibyte;
-        }
-}
-
-uint64_t convertBytes(uint64_t bytes, enum ByteUnit unit, unsigned int* dec)
-{
-        uint64_t retVal = 0;
-        uint64_t tmpDec;
-
-        switch (unit) {
-                case Byte:
-                        retVal = bytes;
-                        (*dec) = 0;
-                        break;
-                case Kibibyte:
-                        retVal = bytes >> 10;
-                        tmpDec = bytes - (retVal << 10);
-                        shiftDec(dec, tmpDec);
-                        break;
-                case Mebibyte:
-                        retVal = bytes >> 20;
-                        tmpDec = bytes - (retVal << 20);
-                        shiftDec(dec, tmpDec);
-                        break;
-                case Gibibyte:
-                        retVal = bytes >> 30;
-                        tmpDec = bytes - (retVal << 30);
-                        shiftDec(dec, tmpDec);
-                        break;
-                case Tebibyte:
-                        retVal = bytes >> 40;
-                        tmpDec = bytes - (retVal << 40);
-                        shiftDec(dec, tmpDec);
-                        break;
-                case Pebibyte:
-                        retVal = bytes >> 50;
-                        tmpDec = bytes - (retVal << 50);
-                        shiftDec(dec, tmpDec);
-                        break;
-                case Exbibyte:
-                        retVal = bytes >> 60;
-                        tmpDec = bytes - (retVal << 60);
-                        shiftDec(dec, tmpDec);
-                        break;
-        }
-
-        return retVal;
-}
-
-void shiftDec(unsigned int* dec, uint64_t in)
-{
-        while (in >= 100) {
-                in = in / 10;
-        }
-
-        (*dec) = in;
-}
-
-void getUnitStr(enum ByteUnit unit, char* str)
-{
-        switch (unit) {
-                case Byte:
-                        strncpy(str, "B", 2);
-                        break;
-                case Kibibyte:
-                        strncpy(str, "KiB", 4);
-                        break;
-                case Mebibyte:
-                        strncpy(str, "MiB", 4);
-                        break;
-                case Gibibyte:
-                        strncpy(str, "GiB", 4);
-                        break;
-                case Tebibyte:
-                        strncpy(str, "TiB", 4);
-                        break;
-                case Pebibyte:
-                        strncpy(str, "PiB", 4);
-                        break;
-                case Exbibyte:
-                        strncpy(str, "EiB", 4);
-                        break;
-        }
 }

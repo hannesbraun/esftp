@@ -1,7 +1,6 @@
-#include <limits.h>
-#include <pthread.h>
+#ifndef workerList_h
+#define workerList_h
 
-#include "server.h"
 #include "worker.h"
 
 #define INITIAL_SIZE 1
@@ -20,3 +19,5 @@ int wlAdd(struct WorkerList* workerList, struct WorkerConfig* workerConfig);
 int wlResize(struct WorkerList* workerList, unsigned int newArraySize);
 int wlJoin(struct WorkerList* workerList);
 void wlFree(struct WorkerList* workerList);
+
+#endif

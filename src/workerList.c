@@ -4,7 +4,6 @@
  * Important: this module is not thread safe.
  */
 
-#include <errno.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -13,6 +12,9 @@
 #include "worker.h"
 #include "workerList.h"
 
+/**
+ * Initializes the worker list
+ */
 int wlInitialize(struct WorkerList* workerList)
 {
         workerList->tidArray = (struct WorkerConfig**) malloc(INITIAL_SIZE * sizeof(struct WorkerConfig*));
@@ -26,6 +28,10 @@ int wlInitialize(struct WorkerList* workerList)
         return 0;
 }
 
+/**
+ * Cleans up the worker list by removing finished workers
+  * The internal array will get resized afterwards if necessary
+ */
 int wlCleanup(struct WorkerList* workerList)
 {
         unsigned int i;
@@ -54,6 +60,9 @@ int wlCleanup(struct WorkerList* workerList)
         return 0;
 }
 
+/**
+ * Deletes the worker at the given index from the list
+ */
 int wlDelete(struct WorkerList* workerList, unsigned int index)
 {
         // Using long long here to be able to store the highest possible index plus 1
@@ -79,6 +88,9 @@ int wlDelete(struct WorkerList* workerList, unsigned int index)
         return 0;
 }
 
+/**
+ * Adds a worker to the list
+ */
 int wlAdd(struct WorkerList* workerList, struct WorkerConfig* workerConfig)
 {
         int tmp;
@@ -98,6 +110,9 @@ int wlAdd(struct WorkerList* workerList, struct WorkerConfig* workerConfig)
         return 0;
 }
 
+/**
+ * Tries to resize the internal array to the given size
+ */
 int wlResize(struct WorkerList* workerList, unsigned int newArraySize)
 {
         if (newArraySize < workerList->usedSlots) {
@@ -122,6 +137,10 @@ int wlResize(struct WorkerList* workerList, unsigned int newArraySize)
         return 0;
 }
 
+/**
+ * Waits for all workers to finish.
+ * This function is blocking.
+ */
 int wlJoin(struct WorkerList* workerList)
 {
         int tmp;
@@ -146,6 +165,9 @@ int wlJoin(struct WorkerList* workerList)
         return 0;
 }
 
+/**
+ * Frees the space of the internal array
+ */
 void wlFree(struct WorkerList* workerList)
 {
         free(workerList->tidArray);
