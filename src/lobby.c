@@ -200,6 +200,7 @@ int handleRequest(int lobbySocketID, struct WorkerList* workerList, struct Lobby
                         case ENFILE:
                         case ENOBUFS:
                                 perror("An non-fatal error ocurred while accepting a connection");
+                                // fallthrough
                         case EINTR: // Interrupted (likley by SIGINT)
                                 // New iteration, try again
                                 retVal = -2;
