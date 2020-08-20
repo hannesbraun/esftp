@@ -13,5 +13,13 @@ clean:
 	rm -rf bin
 
 install:
-	cp bin/esftp-server /usr/local/bin
-	cp bin/esftp-client /usr/local/client
+	cp bin/esftp-server /usr/local/bin/esftp-server
+	cp doc/esftp-server.1 /usr/local/share/man/man1/esftp-server.1
+	cp bin/esftp-client /usr/local/bin/esftp-client
+	cp doc/esftp-client.1 /usr/local/share/man/man1/esftp-client.1
+
+uninstall:
+	rm -f /usr/local/bin/esftp-server
+	rm -f /usr/local/share/man/man1/esftp-server.1
+	rm -f /usr/local/bin/esftp-client
+	rm -f /usr/local/share/man/man1/esftp-client.1
