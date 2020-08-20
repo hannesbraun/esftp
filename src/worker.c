@@ -238,7 +238,7 @@ int sendItemViaTCP(int* socketID, union ItemHeader* header, char* path)
                         goto error;
                 }
         } else {
-                strncpy(pathCpy, path, strlen(path) + 1);
+                strncpy(pathCpy, path, 4096);
         }
         base = basename(pathCpy);
 
