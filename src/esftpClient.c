@@ -21,10 +21,12 @@
 
 #define _FILE_OFFSET_BITS 64
 
+#include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -258,6 +260,11 @@ int recvFile(int socketID, uint64_t size, char* name)
                 goto error;
         }
 
+        // Initialize timeProgress
+        for (i = 0; i < 20; i++) {
+          memcpy(&(timeProgress[i]), &(timeProgress[20]), sizeof(struct timeval));
+        }
+
         // Receiving the file
         printf("Receiving file %s...\n", name);
         while (bytesLeft > 0) {
@@ -270,15 +277,20 @@ int recvFile(int socketID, uint64_t size, char* name)
                 // Receive as much data as possible
                 bytesRecv = recv(socketID, buf, bufSize, 0);
                 if (bytesRecv == -1) {
-                        perror("An error ocurred while receiving the file");
+                        perror("\nAn error ocurred while receiving the file");
                         retVal = -1;
                         goto error;
+                } else if (bytesRecv == 0 && bufSize != 0) {
+                    errno = ECONNRESET;
+                    perror("\nAn error ocurred while receiving the file");
+                    retVal = -1;
+                    goto error;
                 }
 
                 // Write to file
                 tmp = write(fd, buf, bytesRecv);
                 if (tmp == -1) {
-                        perror("An error ocurred while writing the received data to the file");
+                        perror("\nAn error ocurred while writing the received data to the file");
                         retVal = -1;
                         goto error;
                 }
@@ -289,7 +301,7 @@ int recvFile(int socketID, uint64_t size, char* name)
                 // Update current time
                 tmp = gettimeofday(&timeCurrent, NULL);
                 if (tmp == -1) {
-                        perror("An error ocurred while getting the time of the day");
+                        perror("\nAn error ocurred while getting the time of the day");
                         retVal = -1;
                         goto error;
                 }
