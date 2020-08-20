@@ -82,7 +82,7 @@ void* worker(void* vConfig)
 
                 // Send item
                 tmp = sendItemViaTCP(&(config->socketID), &itemHeader, config->items[i]);
-                if (tmp == -1) {
+                if (tmp == -1 || serverShutdownState == forceShutdown) {
                         goto error;
                 }
 
@@ -428,7 +428,7 @@ int sendInner(int* socketID, char* path)
                 }
 
                 tmp = sendItemViaTCP(socketID, &header, pathCurr);
-                if (tmp == -1) {
+                if (tmp == -1 || serverShutdownState == forceShutdown) {
                         retVal = -1;
                         goto error;
                 }
