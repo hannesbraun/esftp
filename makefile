@@ -13,6 +13,8 @@ clean:
 	rm -rf bin
 
 install:
+	mkdir -p /usr/local/bin
+	mkdir -p /usr/local/share/man/man1
 	cp bin/esftp-server /usr/local/bin/esftp-server
 	cp doc/esftp-server.1 /usr/local/share/man/man1/esftp-server.1
 	cp bin/esftp-client /usr/local/bin/esftp-client
