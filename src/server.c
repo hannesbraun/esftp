@@ -173,14 +173,14 @@ int parseAndConfigure(int argc, char** argv, struct LobbyConfig* config)
         if (optind < argc) {
                 // Store paths/items
                 do {
-                        config->items[config->itemsLen] = argv[optind];
-                        optind++;
-                        config->itemsLen++;
                         if (config->itemsLen >= MAX_ITEMS) {
                                 retVal = -1;
                                 fprintf(stderr, "Too much items. Only %d itmes are allowed.\n", MAX_ITEMS);
                                 break;
                         }
+                        config->items[config->itemsLen] = argv[optind];
+                        optind++;
+                        config->itemsLen++;
                 }  while (optind < argc);
         } else if (config->printVersion == 0 && config->printHelp == 0) {
                 // Not enough arguments
