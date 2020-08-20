@@ -128,7 +128,7 @@ void printStatus(uint64_t* byteProgress, struct timeval* timeProgress, uint64_t 
         outTotal = convertBytes(size, unitSize, &decTotal);
 
         // Write new status
-        snprintf(out, 1024, "%" PRIu64 ".%.2u %s / %" PRIu64 ".%.2u %s | %" PRIu64 ".%.2u %s/s | ETA: %dm %ds     ",
+        snprintf(out, 1024, "%" PRIu64 ".%.2u %s / %" PRIu64 ".%.2u %s | %" PRIu64 ".%.2u %s/s | ETA: %um %us     ",
                  outRecv,
                  decRecv,
                  unitSizeStr,
