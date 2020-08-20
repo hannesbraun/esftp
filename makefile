@@ -1,10 +1,10 @@
 all: bin/esftp-server bin/esftp-client
 
-bin/esftp-server: src/server.h src/serverConfig.h src/workerList.h src/server.c src/lobby.c src/worker.c src/globalsServer.c src/workerList.c src/fileSize.c src/fileSize.h src/printVersion.c src/printVersion.h
+bin/esftp-server: src/server.h src/serverConfig.h src/server.c src/lobby.c src/worker.c src/worker.h src/globalsServer.c src/workerList.c src/workerList.h src/fileSize.c src/fileSize.h src/printVersion.c src/printVersion.h src/commons.h
 	mkdir -p bin
 	gcc -Wall -Wextra -O3 -o bin/esftp-server -pthread src/server.c src/lobby.c src/worker.c src/globalsServer.c src/workerList.c src/fileSize.c src/printVersion.c
 
-bin/esftp-client: src/client.c src/esftpClient.h src/esftpClient.c src/recvFileStatus.c src/recvFileStatus.h src/recvExact.c src/recvExact.h src/printVersion.c src/printVersion.h
+bin/esftp-client: src/client.c src/esftpClient.h src/esftpClient.c src/recvFileStatus.c src/recvFileStatus.h src/recvExact.c src/recvExact.h src/printVersion.c src/printVersion.h src/commons.h
 	mkdir -p bin
 	gcc -Wall -Wextra -O3 -o bin/esftp-client src/client.c src/esftpClient.c src/recvFileStatus.c src/recvExact.c src/printVersion.c -lm
 
