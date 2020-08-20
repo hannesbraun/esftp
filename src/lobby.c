@@ -57,7 +57,7 @@ int lobby(struct LobbyConfig* config)
         // Lobby address
         struct sockaddr_in lobbyAddr;
 
-        printf("Starting esftp server...\n");
+        printf("Starting ESFTP server...\n");
 
         tmp = checkItemAvaliability(config);
         if (tmp == -1) {
@@ -101,6 +101,8 @@ int lobby(struct LobbyConfig* config)
                 perror("An error ocurred while setting the lobby socket to listening mode");
                 goto errorSocketListen;
         }
+
+        printf("ESFTP server is running\n");
 
         // Main loop
         while (serverShutdownState == noShutdown) {
