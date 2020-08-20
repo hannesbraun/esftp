@@ -33,6 +33,7 @@
 
 int parseAndConfigure(int argc, char** argv, struct LobbyConfig* config);
 void sigintHandler(int signum);
+void printHelp(void);
 
 /**
  * The main function calls a function to parse the command line arguments and executes the lobby afterwards.
@@ -64,7 +65,11 @@ int main(int argc, char** argv)
         tmp = parseAndConfigure(argc, argv, &config);
 
         if (tmp == 0) {
-                if (config.printVersion == 1) {
+                if (config.printHelp == 1) {
+                        // Only print the help and exit
+                        printHelp();
+                        goto end;
+                } else if (config.printVersion == 1) {
                         // Only print the version and exit
                         printVersion(server);
                         goto end;
@@ -122,13 +127,14 @@ int parseAndConfigure(int argc, char** argv, struct LobbyConfig* config)
         // Available options
         struct option longOptions[] = {
                 {"version", no_argument, NULL, 1},
+                {"help", no_argument, NULL, 'h'},
                 {"port", required_argument, NULL, 'p'},
                 {NULL, 0, NULL, 0}
         };
 
         while (1) {
                 // Parse next option
-                optCode = getopt_long(argc, argv, "p:", longOptions, &optionIndex);
+                optCode = getopt_long(argc, argv, "p:h", longOptions, &optionIndex);
 
                 if (optCode == -1) {
                         // No more options found
@@ -139,6 +145,10 @@ int parseAndConfigure(int argc, char** argv, struct LobbyConfig* config)
                         case 1:
                                 // Print version
                                 config->printVersion = 1;
+                                break;
+                        case 'h':
+                                // Help will be printed
+                                config->printHelp = 1;
                                 break;
 
                         case 'p':
@@ -171,7 +181,7 @@ int parseAndConfigure(int argc, char** argv, struct LobbyConfig* config)
                                 break;
                         }
                 }  while (optind < argc);
-        } else if (config->printVersion == 0) {
+        } else if (config->printVersion == 0 && config->printHelp == 0) {
                 // Not enough arguments
                 retVal = -1;
                 fprintf(stderr, "Not enough arguments given.\n");
@@ -197,4 +207,15 @@ void sigintHandler(int signum)
         } else if (serverShutdownState == forceShutdown) {
                 exit(EXIT_FAILURE);
         }
+}
+
+void printHelp(void)
+{
+        printf("esftp-server\n\nUsage: esftp-server [-p PORT] item ...\n\nesftp-server serves one or multiple files and/or directories over the ESFTP protocol. "
+               "With -p or --port, the port on which the files and directories are served can be specified (defaults to 6719).\n\n"
+               "Options:\n"
+               "    -p, --port <PORT>: Sets the port on which to serve the items.\n"
+               "        Defaults to 6719.\n"
+               "    -h, --help: Prints a help text including a list of available options.\n"
+               "    --version: Prints the version of esftp-server.\n\n");
 }

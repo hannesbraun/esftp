@@ -25,6 +25,7 @@
 struct ClientConfig {
         struct in_addr addr;
         short int port;
+        unsigned char printHelp: 1;
         unsigned char printVersion: 1;
 };
 

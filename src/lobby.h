@@ -26,6 +26,7 @@ struct LobbyConfig {
         char** items;
         unsigned long int itemsLen;
         unsigned short int port;
+        unsigned char printHelp: 1;
         unsigned char printVersion: 1;
 };
 

@@ -28,6 +28,8 @@
 #include "printVersion.h"
 
 int parseAndConfigure(int argc, char* argv[], struct ClientConfig* config);
+void printHelp(void);
+
 /**
  * Main function for client
  */
@@ -46,7 +48,9 @@ int main(int argc, char* argv[])
                 goto error;
         }
 
-        if (config.printVersion == 1) {
+        if (config.printHelp == 1) {
+                printHelp();
+        } else if (config.printVersion == 1) {
                 // Print client version and exit
                 printVersion(client);
         } else {
@@ -77,13 +81,14 @@ int parseAndConfigure(int argc, char* argv[], struct ClientConfig* config)
         int optionIndex;
         struct option longOptions[] = {
                 {"version", no_argument, NULL, 1},
+                {"help", no_argument, NULL, 'h'},
                 {"port", required_argument, NULL, 'p'},
                 {NULL, 0, NULL, 0}
         };
 
         while (1) {
                 // Get next option
-                optCode = getopt_long(argc, argv, "o:p:", longOptions, &optionIndex);
+                optCode = getopt_long(argc, argv, "p:h", longOptions, &optionIndex);
                 if (optCode == -1) {
                         // No more options found
                         break;
@@ -94,7 +99,10 @@ int parseAndConfigure(int argc, char* argv[], struct ClientConfig* config)
                                 // Version will be printed
                                 config->printVersion = 1;
                                 break;
-
+                        case 'h':
+                                // Help will be printed
+                                config->printHelp = 1;
+                                break;
                         case 'p':
                                 // Port
                                 config->port = atoi(optarg) % 65536;
@@ -119,12 +127,24 @@ int parseAndConfigure(int argc, char* argv[], struct ClientConfig* config)
                         fprintf(stderr, "The given ip address is not valid.\n");
                         retVal = -1;
                 }
-        } else if (config->printVersion == 0) {
+        } else if (config->printVersion == 0 && config->printHelp == 0) {
                 // Not enough arguments
                 retVal = -1;
                 fprintf(stderr, "Not enough arguments given.\n");
-                fprintf(stderr, "Usage: %s <options> <ip address>\n", argv[0]);
+                fprintf(stderr, "Usage: %s <options> <server>\n", argv[0]);
         }
 
         return retVal;
+}
+
+void printHelp(void)
+{
+        printf("esftp-client\n\nUsage: esftp-client [-p PORT] server\n\nesftp-client receives one or multiple files and/or directories from a server over the ESFTP protocol. "
+               "The received top-level files and directories will be stored in the current working directory. "
+               "The given server has to be an ip address. Domain names and hostnames are not supported.\n\n"
+               "Options:\n"
+               "    -p, --port <PORT>: Sets the port of the server to connect to.\n"
+               "        Defaults to 6719.\n"
+               "    -h, --help: Prints a help text including a list of available options.\n"
+               "    --version: Prints the version of esftp-client.\n\n");
 }
