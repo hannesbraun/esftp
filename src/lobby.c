@@ -304,7 +304,7 @@ closeInterrupt:
         // And only free allocated memory if worker is not already running (else: the worker has to free the memory)
         if (retVal < -1 && origRetVal != -6 && origRetVal != -7) {
                 free(workerConfig);
-        } else {
+        } else if (origRetVal == -6 || origRetVal == -7) {
                 // Tell worker to free memory himself
                 workerConfig->selfFree = 1;
         }

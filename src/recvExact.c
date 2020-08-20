@@ -15,6 +15,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  ******************************************************************************/
 
+#include <errno.h>
 #include <sys/socket.h>
 
 /**
@@ -31,6 +32,10 @@ int recvExact(int socketID, void* buf, int bufLen, int flags)
                 current = recv(socketID, buf + total, bufLen - total, flags);
                 if (current == -1) {
                         // Error
+                        return -1;
+                } else if (current == 0 && bufLen != 0) {
+                        // Socket closed before all bytes were received
+                        errno = ECONNRESET;
                         return -1;
                 }
 
