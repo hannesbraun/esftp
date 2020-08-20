@@ -1,0 +1,26 @@
+.TH ESFTP-SERVER 1 "Last change: August 19th, 2020"
+.SH NAME
+esftp-server \- serve and send files and directories with the ESFTP protocol
+.SH SYNOPSIS
+.B esftp-server
+[\fB\-p\fR \fIPORT\fR]
+.IR item ...
+.SH DESCRIPTION
+.B esftp-server
+serves one or multiple files and/or directories over the ESFTP protocol.
+With \-p or \-\-port, the port on which the files and directories are served can be specified (defaults to 6719).
+To shut down the server, press ctrl-C to initiate a friendly shutdown.
+All established transfers will be completed and the server will exit afterwards.
+To shutdown the server immediately, press ctrl-C again.
+.SH OPTIONS
+.TP
+.BR \-p ", " \-\-port\ \fIPORT\fR
+Sets the port on which to serve the files and directories. Defaults to 6719.
+.TP
+.BR \-h ", " \-\-help
+Prints a help text including a list of available options.
+.TP
+.BR \-\-version
+Prints the version of esftp-server.
+.SH AUTHOR
+Hannes Braun <hannesbraun@mail.de>

@@ -1,0 +1,25 @@
+.TH ESFTP-CLIENT 1 "Last change: August 19th, 2020"
+.SH NAME
+esftp-client \- receive files and directories with the ESFTP protocol
+.SH SYNOPSIS
+.B esftp-client
+[\fB\-p\fR \fIPORT\fR]
+.IR server
+.SH DESCRIPTION
+.B esftp-client
+receives one or multiple files and/or directories from a server over the ESFTP protocol.
+The received top-level files and directories will be stored in the current working directory.
+With \-p or \-\-port, the server port can be specified (defaults to 6719).
+The given server has to be an ip address. Domain names and hostnames are not supported.
+.SH OPTIONS
+.TP
+.BR \-p ", " \-\-port\ \fIPORT\fR
+Sets the port of the server to connect to. Defaults to 6719.
+.TP
+.BR \-h ", " \-\-help
+Prints a help text including a list of available options.
+.TP
+.BR \-\-version
+Prints the version of esftp-client.
+.SH AUTHOR
+Hannes Braun <hannesbraun@mail.de>
