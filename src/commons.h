@@ -22,7 +22,7 @@
 #ifndef commons_h
 #define commons_h
 
-#define ESFTP_VERSION "0.3"
+#define ESFTP_VERSION "1.0.0"
 
 // Default port
 #define ESFTP_PORT 6719
