@@ -119,6 +119,7 @@ int parseAndConfigure(int argc, char** argv, struct LobbyConfig* config)
         int retVal = 0;
 
         // Defaults
+        config->printHelp = 0;
         config->printVersion = 0;
         config->port = ESFTP_PORT;
 

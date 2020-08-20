@@ -74,6 +74,7 @@ int parseAndConfigure(int argc, char* argv[], struct ClientConfig* config)
         int retVal = 0;
         int tmp;
 
+        config->printHelp = 0;
         config->printVersion = 0;
         config->port = ESFTP_PORT;
 
