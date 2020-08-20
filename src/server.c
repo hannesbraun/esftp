@@ -53,6 +53,7 @@ int main(int argc, char** argv)
         // Server configuration
         struct LobbyConfig config;
         config.items = items;
+        config.itemsLen = 0;
 
         // Ignore SIGPIPE (to avoid killing the process if a connection breaks)
         struct sigaction newSigactionSigpipe;
